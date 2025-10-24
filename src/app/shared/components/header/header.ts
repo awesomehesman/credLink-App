@@ -1,5 +1,5 @@
 
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, EventEmitter, inject, Output, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -79,10 +79,15 @@ const WITHDRAW_DETAILS = {
 export class Header {
   private readonly dialog = inject(MatDialog);
   private readonly wallet = inject(WalletService);
+  @Output() menuToggle = new EventEmitter<void>();
 
   readonly walletBalance = computed(() => this.wallet.available());
   readonly walletSummary = computed(() => this.wallet.summary());
   readonly walletBanks = signal(WALLET_BANKS);
+
+  toggleMenu() {
+    this.menuToggle.emit();
+  }
 
   openAddFunds() {
     this.dialog.open(WalletAddFundsDialog, {

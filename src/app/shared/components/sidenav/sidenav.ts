@@ -1,5 +1,5 @@
 
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,4 +11,10 @@ import { MatIconModule } from '@angular/material/icon';
   templateUrl: './sidenav.html',
   styleUrl: './sidenav.scss'
 })
-export class Sidenav {}
+export class Sidenav {
+  @Output() navigate = new EventEmitter<void>();
+
+  handleNavigate() {
+    this.navigate.emit();
+  }
+}

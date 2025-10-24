@@ -1,1 +1,19 @@
 /* base in styles.scss */
+
+.shell {
+  height: 100vh;
+}
+
+.shell .sidenav {
+  width: 260px;
+}
+
+.shell .mat-mdc-sidenav-content {
+  transition: filter 0.2s ease, opacity 0.2s ease;
+}
+
+.shell .mat-mdc-sidenav-content.is-obscured {
+  filter: blur(3px);
+  opacity: 0.4;
+  pointer-events: none;
+}

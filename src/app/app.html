@@ -1,11 +1,18 @@
 
 @if (showShell()) {
   <mat-sidenav-container class="shell">
-    <mat-sidenav [mode]="'side'" [opened]="true" class="sidenav">
-      <app-sidenav></app-sidenav>
+    <mat-sidenav
+      class="sidenav"
+      [mode]="'over'"
+      [opened]="sidenavOpen()"
+      [disableClose]="false"
+      (openedChange)="sidenavOpen.set($event)"
+      (backdropClick)="closeSidenav()"
+    >
+      <app-sidenav (navigate)="closeSidenav()"></app-sidenav>
     </mat-sidenav>
-    <mat-sidenav-content>
-      <app-header></app-header>
+    <mat-sidenav-content [class.is-obscured]="sidenavOpen()">
+      <app-header (menuToggle)="toggleSidenav()"></app-header>
       <div class="container">
         <router-outlet></router-outlet>
       </div>
