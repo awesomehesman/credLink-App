@@ -1,6 +1,6 @@
 
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { ReactiveFormsModule, FormBuilder, Validators, FormGroup, AbstractControl, ValidationErrors } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators, FormGroup, AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -73,12 +73,12 @@ export class Lend implements OnInit {
   ngOnInit(): void {
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(4)]],
-      amount: [1000, [Validators.required, Validators.min(100), this.maxAvailableValidator.bind(this)]],
-      rate: [18, [Validators.required, Validators.min(1), Validators.max(30)]],
-      minDurationMonths: [6, [Validators.required, Validators.min(1)]],
-      maxDurationMonths: [12, [Validators.required, Validators.min(1)]],
-      minCreditScore: [620, [Validators.min(0)]],
-      minMonthlyIncome: [15000, [Validators.min(0)]]
+      amount: [100, [Validators.required, Validators.min(100), Validators.max(1_000_000), this.maxAvailableValidator.bind(this)]],
+      rate: [9, [Validators.required, Validators.min(9), Validators.max(30)]],
+      minDurationMonths: [1, [Validators.required, Validators.min(1), Validators.max(72)]],
+      maxDurationMonths: [12, [Validators.required, Validators.min(1), Validators.max(72)]],
+      minCreditScore: [null, [this.optionalMinValidator(400)]],
+      minMonthlyIncome: [null, [Validators.min(0)]]
     });
   }
 
@@ -92,15 +92,29 @@ export class Lend implements OnInit {
     return null;
   }
 
+  private optionalMinValidator(min: number): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (value === null || value === undefined || value === '') {
+        return null;
+      }
+      const numeric = Number(value);
+      if (Number.isNaN(numeric)) {
+        return { minValue: { min } };
+      }
+      return numeric < min ? { minValue: { min } } : null;
+    };
+  }
+
   resetForm() {
     this.form.reset({
       name: '',
-      amount: Math.min(1000, this.walletAvailable()),
-      rate: 18,
-      minDurationMonths: 6,
+      amount: 100,
+      rate: 9,
+      minDurationMonths: 1,
       maxDurationMonths: 12,
-      minCreditScore: 620,
-      minMonthlyIncome: 15000
+      minCreditScore: null,
+      minMonthlyIncome: null
     });
     this.editingOffer.set(null);
     this.submitError.set(null);
@@ -114,8 +128,8 @@ export class Lend implements OnInit {
       rate: offer.rate,
       minDurationMonths: offer.minDurationMonths,
       maxDurationMonths: offer.maxDurationMonths,
-      minCreditScore: offer.minCreditScore ?? 620,
-      minMonthlyIncome: offer.minMonthlyIncome ?? 15000
+      minCreditScore: offer.minCreditScore ?? null,
+      minMonthlyIncome: offer.minMonthlyIncome ?? null
     });
     this.submitError.set(null);
   }
@@ -126,14 +140,22 @@ export class Lend implements OnInit {
       return;
     }
     const payload = this.form.value;
+    const parseOptionalNumber = (value: unknown) => {
+      if (value === null || value === undefined || value === '') {
+        return undefined;
+      }
+      const numeric = Number(value);
+      return Number.isNaN(numeric) ? undefined : numeric;
+    };
+
     const request = {
       name: payload.name,
       amount: Number(payload.amount),
       rate: Number(payload.rate),
       minDurationMonths: Number(payload.minDurationMonths),
       maxDurationMonths: Number(payload.maxDurationMonths),
-      minCreditScore: payload.minCreditScore ? Number(payload.minCreditScore) : undefined,
-      minMonthlyIncome: payload.minMonthlyIncome ? Number(payload.minMonthlyIncome) : undefined,
+      minCreditScore: parseOptionalNumber(payload.minCreditScore),
+      minMonthlyIncome: parseOptionalNumber(payload.minMonthlyIncome),
       negotiable: false
     };
 
