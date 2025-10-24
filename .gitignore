@@ -1,0 +1,27 @@
+# Node dependencies and caches
+node_modules/
+yarn.lock
+pnpm-lock.yaml
+.pnp.*
+
+# Angular / build artifacts
+dist/
+.angular/
+.angular/cache/
+
+# Tooling output
+coverage/
+tmp/
+out/
+*.log
+*.tgz
+
+# Environment and secrets
+.env*
+*.local
+
+# IDE and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
