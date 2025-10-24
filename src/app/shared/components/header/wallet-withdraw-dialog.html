@@ -4,9 +4,6 @@
       <h2>Withdraw funds</h2>
       <p>{{ summary().accountLabel }}</p>
     </div>
-    <button mat-icon-button (click)="close()" aria-label="Close dialog">
-      <mat-icon>close</mat-icon>
-    </button>
   </header>
 
   <section class="wallet-dialog__balance">
@@ -85,7 +82,7 @@
 
   <footer class="wallet-dialog__footer">
     <div class="footer-buttons">
-      <button mat-button type="button" (click)="close()">Cancel</button>
+      <button mat-stroked-button type="button" (click)="close()">Cancel</button>
       <button mat-flat-button color="primary" type="submit">Withdraw</button>
     </div>
     <p class="footnote">

@@ -4,9 +4,6 @@
       <h2>Add funds to wallet</h2>
       <p>{{ summary().accountLabel }}</p>
     </div>
-    <button mat-icon-button (click)="close()" aria-label="Close dialog">
-      <mat-icon>close</mat-icon>
-    </button>
   </header>
 
   <section class="wallet-dialog__balance">
@@ -58,7 +55,7 @@
   </section>
 
   <footer class="wallet-dialog__footer">
-    <p>Use the EFT reference exactly as shown so we can allocate your funds quickly.</p>
-    <button mat-flat-button color="primary" (click)="close()">Done</button>
+    <p class="wallet-dialog__footnote">Use the EFT reference exactly as shown so we can allocate your funds quickly.</p>
+    <button mat-flat-button color="primary" class="wallet-dialog__primary" (click)="close()">Done</button>
   </footer>
 </div>

@@ -91,7 +91,9 @@ export class Header {
 
   openAddFunds() {
     this.dialog.open(WalletAddFundsDialog, {
-      width: '480px',
+      width: '520px',
+      panelClass: 'wallet-dialog-panel',
+      disableClose: true,
       data: {
         balance: this.walletBalance(),
         banks: this.walletBanks(),
@@ -102,7 +104,9 @@ export class Header {
 
   openWithdraw() {
     this.dialog.open(WalletWithdrawDialog, {
-      width: '520px',
+      width: '560px',
+      panelClass: 'wallet-dialog-panel',
+      disableClose: true,
       data: {
         balance: this.walletSummary(),
         profile: WITHDRAW_DETAILS

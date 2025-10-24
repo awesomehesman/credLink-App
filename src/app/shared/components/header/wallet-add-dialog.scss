@@ -1,9 +1,10 @@
 .wallet-dialog {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 8px 4px 4px;
+  gap: 28px;
+  padding: 32px 32px 28px;
   color: #102a23;
+  max-width: 520px;
 }
 
 .wallet-dialog__header {
@@ -14,7 +15,7 @@
 
   h2 {
     margin: 0;
-    font-size: 22px;
+    font-size: 24px;
   }
 
   p {
@@ -28,8 +29,8 @@
   justify-content: space-between;
   align-items: center;
   background: rgba(16, 107, 103, 0.08);
-  border-radius: 14px;
-  padding: 16px 20px;
+  border-radius: 18px;
+  padding: 18px 22px;
 
   strong {
     font-size: 20px;
@@ -46,7 +47,7 @@
 .wallet-dialog__body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 
   h3 {
     margin: 0;
@@ -65,11 +66,11 @@
 
 .wallet-dialog__bank-card {
   border: 1px solid rgba(16, 42, 35, 0.12);
-  border-radius: 16px;
-  padding: 16px 20px;
+  border-radius: 18px;
+  padding: 18px 22px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   background: #f8fbfa;
 }
 
@@ -80,10 +81,12 @@
 
   span {
     color: rgba(16, 42, 35, 0.6);
+    font-size: 13px;
   }
 
   strong {
     font-weight: 600;
+    text-align: right;
   }
 }
 
@@ -95,6 +98,23 @@
 .wallet-dialog__footer {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
+  align-items: center;
+  text-align: center;
   color: rgba(16, 42, 35, 0.65);
+}
+
+.wallet-dialog__primary {
+  min-width: 160px;
+}
+
+.wallet-dialog__footnote {
+  margin: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .wallet-dialog {
+    padding: 24px 20px 24px;
+  }
 }
