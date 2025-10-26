@@ -1,9 +1,9 @@
 <div class="dashboard-page">
   <div class="mode-switch">
     <button type="button" class="mode-switch__btn" [class.is-active]="activeMode() === 'lender'"
-      (click)="switchMode('lender')">Lender</button>
+      (click)="switchMode('lender')">Lender Dashboard</button>
     <button type="button" class="mode-switch__btn" [class.is-active]="activeMode() === 'borrower'"
-      (click)="switchMode('borrower')">Borrower</button>
+      (click)="switchMode('borrower')">Borrower Dashboard</button>
   </div>
 
   @if (activeMode() === 'borrower') {

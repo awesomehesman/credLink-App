@@ -107,10 +107,7 @@ export class LoanService {
       );
       const mapped = dtos.map((dto) => this.mapOffer(dto));
       this.offers.set(mapped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      const committed = mapped
-        .filter((offer) => offer.status === 'Open')
-        .reduce((sum, offer) => sum + offer.amount, 0);
-      this.wallet.syncCommitted(committed);
+      await this.wallet.syncCommitted();
     } catch (error) {
       console.error('Unable to load offers', error);
     }
@@ -119,7 +116,7 @@ export class LoanService {
   async createOffer(partial: CreateOfferPayload): Promise<boolean> {
     const lenderId = this.auth.userId();
     if (!lenderId) return false;
-    if (!this.wallet.hold(partial.amount)) return false;
+    if (!(await this.wallet.hold(partial.amount, `offer-create-${Date.now()}`))) return false;
     try {
       const dto = await firstValueFrom(
         this.http.post<ApiLoanOffer>(
@@ -132,7 +129,7 @@ export class LoanService {
       return true;
     } catch (error) {
       console.error('Unable to create offer', error);
-      this.wallet.release(partial.amount);
+      await this.wallet.release(partial.amount);
       return false;
     }
   }
@@ -147,7 +144,7 @@ export class LoanService {
     const existing = offers[existingIndex];
 
     const delta = partial.amount !== undefined ? partial.amount - existing.amount : 0;
-    if (delta > 0 && !this.wallet.hold(delta)) {
+    if (delta > 0 && !(await this.wallet.hold(delta, `offer-update-${id}-${Date.now()}`))) {
       return false;
     }
 
@@ -164,13 +161,13 @@ export class LoanService {
         offers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       );
       if (delta < 0) {
-        this.wallet.release(Math.abs(delta));
+        await this.wallet.release(Math.abs(delta));
       }
       return true;
     } catch (error) {
       console.error('Unable to update offer', error);
       if (delta > 0) {
-        this.wallet.release(delta);
+        await this.wallet.release(delta);
       }
       return false;
     }
@@ -188,7 +185,7 @@ export class LoanService {
         )
       );
       if (offer) {
-        this.wallet.release(offer.amount);
+        await this.wallet.release(offer.amount);
       }
       this.offers.set(this.offers().filter((o) => o.id !== id));
       return true;

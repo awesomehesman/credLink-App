@@ -484,7 +484,7 @@ export class Dashboard {
     }, 0) ?? 0;
   }
 
-  withdrawListing(id: string) {
+  async withdrawListing(id: string) {
     let withdrawn: LenderLoan | undefined;
     this.lenderMarketplaceLoans.update(loans => {
       const remaining: LenderLoan[] = [];
@@ -519,7 +519,7 @@ export class Dashboard {
       ? withdrawn.amount
       : Number(String(withdrawn.amount).replace(/[^0-9.]/g, ''));
     if (!Number.isNaN(numericAmount)) {
-      this.wallet.release(numericAmount);
+      await this.wallet.release(numericAmount);
     }
     if (this.activeLenderTab() === 'marketplace' && this.lenderMarketplaceLoans().length === 0) {
       this.activeLenderTab.set('history');

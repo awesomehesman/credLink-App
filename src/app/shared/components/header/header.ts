@@ -113,8 +113,11 @@ export class Header {
       }
     }).afterClosed().subscribe(result => {
       if (!result || typeof result.amount !== 'number') return;
-      const ok = this.wallet.withdraw(result.amount);
-      if (!ok) console.warn('Unable to withdraw funds: insufficient available balance.');
+      this.wallet.withdraw(result.amount, result.reference).then((ok) => {
+        if (!ok) {
+          console.warn('Unable to withdraw funds: insufficient available balance.');
+        }
+      });
     });
   }
 }
