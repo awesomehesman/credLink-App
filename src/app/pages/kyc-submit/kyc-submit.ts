@@ -20,6 +20,9 @@ export class KycSubmit {
   constructor(public kyc: KycService, private router: Router) {}
   requiredDocs(){ return this.kyc.getSubmission()?.required ?? []; }
   hasUploaded(code: string){ return (this.kyc.getSubmission()?.uploaded ?? []).includes(code); }
-  canSubmit(){ const req = this.requiredDocs(); return this.agree && req.length && req.every(r => this.hasUploaded(r)); }
+  canSubmit(){
+    const req = this.requiredDocs();
+    return this.agree && req.length && req.every((r: string) => this.hasUploaded(r));
+  }
   submit(){ if (this.canSubmit()) { this.kyc.submit(); this.router.navigateByUrl('/onboarding/status'); } }
 }
