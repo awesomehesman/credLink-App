@@ -6,11 +6,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
 import { LoanService } from '../../shared/services/loan.service';
 import { AuthService } from '../../shared/services/auth.service';
 import { WalletService } from '../../shared/services/wallet.service';
 import { CurrencyPipe, DatePipe, NgIf } from '@angular/common';
 import { LoanOffer } from '../../shared/models/loan.models';
+import { WalletAddFundsDialog } from '../../shared/components/header/wallet-add-dialog';
 
 @Component({
   standalone: true,
@@ -34,6 +36,7 @@ export class Lend implements OnInit {
   readonly pageSize = 10;
 
   private readonly wallet = inject(WalletService);
+  private readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
   readonly loans = inject(LoanService);
   readonly auth = inject(AuthService);
@@ -43,6 +46,7 @@ export class Lend implements OnInit {
   readonly currentPage = signal(0);
 
   readonly walletAvailable = computed(() => this.wallet.available());
+  readonly hasAvailableFunds = computed(() => this.walletAvailable() > 0);
   readonly remainingBalance = computed(() => {
     const amount = Number(this.form?.get('amount')?.value ?? 0);
     const available = this.walletAvailable();
@@ -191,6 +195,19 @@ export class Lend implements OnInit {
     if (!success) {
       this.submitError.set('Unable to withdraw this loan. Ensure it has no pending borrower requests.');
     }
+  }
+
+  openAddFunds() {
+    this.dialog.open(WalletAddFundsDialog, {
+      width: '520px',
+      panelClass: 'wallet-dialog-panel',
+      disableClose: true,
+      data: {
+        balance: this.walletAvailable(),
+        banks: this.wallet.banks(),
+        summary: this.wallet.summary()
+      }
+    });
   }
 
   requestsFor(offerId: string) {

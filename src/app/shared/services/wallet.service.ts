@@ -11,6 +11,16 @@ export interface WalletState {
   unsettled: number;
 }
 
+export interface WalletBank {
+  id: string;
+  name: string;
+  accountName: string;
+  branchCode: string;
+  branchName: string;
+  accountNumber: string;
+  reference: string;
+}
+
 interface ApiWallet {
   available?: number;
   committed?: number;
@@ -23,6 +33,36 @@ interface HoldResponse {
   id?: string;
   wallet?: ApiWallet;
 }
+
+export const WALLET_BANKS: WalletBank[] = [
+  {
+    id: 'absa',
+    name: 'ABSA',
+    accountName: 'CredLink Nominees (RF) (PTY) LTD',
+    branchCode: '632005',
+    branchName: 'Melrose Arch',
+    accountNumber: '4096150463',
+    reference: 'CL-ABSA-784563',
+  },
+  {
+    id: 'fnb',
+    name: 'FNB',
+    accountName: 'CredLink Nominees (RF) (PTY) LTD',
+    branchCode: '255005',
+    branchName: 'Sandton City',
+    accountNumber: '62145698712',
+    reference: 'CL-FNB-784563',
+  },
+  {
+    id: 'standard',
+    name: 'Standard Bank',
+    accountName: 'CredLink Nominees (RF) (PTY) LTD',
+    branchCode: '051001',
+    branchName: 'Rosebank',
+    accountNumber: '000245879',
+    reference: 'CL-SB-784563',
+  },
+];
 
 @Injectable({ providedIn: 'root' })
 export class WalletService {
@@ -64,6 +104,10 @@ export class WalletService {
       locked: snapshot.committed,
       unsettled: snapshot.unsettled,
     };
+  }
+
+  banks(): WalletBank[] {
+    return WALLET_BANKS;
   }
 
   async refresh(): Promise<void> {

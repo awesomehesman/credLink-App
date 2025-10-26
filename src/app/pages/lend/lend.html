@@ -9,6 +9,7 @@
     </div>
   </section>
 
+  @if (hasAvailableFunds() || editingOffer()) {
   <mat-card class="create-card">
     <div class="create-card__header">
       <div>
@@ -98,6 +99,17 @@
       <div class="alert">{{ submitError() }}</div>
     }
   </mat-card>
+  } @else {
+    <mat-card class="no-funds-card">
+      <div>
+        <h2>Add funds to publish offers</h2>
+        <p>Your wallet balance is R0.00. Deposit funds before creating new loan offers.</p>
+      </div>
+      <div class="actions">
+        <button mat-flat-button color="primary" type="button" (click)="openAddFunds()">Add funds</button>
+      </div>
+    </mat-card>
+  }
 
   <mat-card class="offers-card">
     <div class="offers-card__header">
