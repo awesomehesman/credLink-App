@@ -47,11 +47,11 @@ export class Register {
     });
   }
 
-  submit(){
+  async submit(){
     if (this.form.invalid || this.form.value.password !== this.form.value.confirmPassword) {
       this.form.markAllAsTouched(); return;
     }
-    const success = this.auth.registerLocally(this.form.value);
+    const success = await this.auth.registerLocally(this.form.value);
     if (!success) {
       const emailCtrl = this.form.get('email');
       if (emailCtrl) {

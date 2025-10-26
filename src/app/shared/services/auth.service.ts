@@ -1,167 +1,189 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 const SESSION_KEY = 'credlink-session';
-const USERS_KEY = 'credlink-users';
 
-export interface Credentials { username: string; password: string; }
-
-interface StoredUser {
+export interface Credentials {
+  email?: string;
+  username?: string;
   password: string;
-  approved: boolean;
-  userId: string;
+  name?: string;
+}
+
+interface AuthResponse {
+  token: string;
+  expires: string;
+  user: ApiUser;
+}
+
+interface ApiUser {
+  id: string;
+  email: string;
+  name?: string;
+  status?: string;
+  created?: string;
+}
+
+interface StoredSession {
+  token: string;
+  expires: string;
+  user: ApiUser;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = environment.apiBaseUrl.replace(/\/$/, '');
+
   private _authed = signal<boolean>(false);
   private _approved = signal<boolean>(false);
   private _userId = signal<string | null>(null);
   private _username = signal<string | null>(null);
-  private _users = signal<Record<string, StoredUser>>({});
+  private _token = signal<string | null>(null);
+  private _expires = signal<string | null>(null);
+  private _profile = signal<ApiUser | null>(null);
 
-  constructor(){
-    localStorage.removeItem('cl_auth_user');
-    sessionStorage.removeItem('cl_auth_user');
+  readonly authenticated = computed(() => this._authed());
+
+  constructor() {
     this.restoreSession();
-    this.restoreUsers();
   }
 
-  private restoreSession(){
+  private restoreSession() {
     const saved = localStorage.getItem(SESSION_KEY);
     if (!saved) return;
     try {
-      const parsed = JSON.parse(saved);
-      this._authed.set(!!parsed.authed);
-      this._approved.set(!!parsed.approved);
-      this._userId.set(parsed.userId ?? null);
-      this._username.set(parsed.username ?? null);
+      const session: StoredSession = JSON.parse(saved);
+      if (session?.token && session?.user?.id) {
+        this.applySession(session);
+      }
     } catch {
       localStorage.removeItem(SESSION_KEY);
     }
   }
 
-  private restoreUsers(){
-    const saved = localStorage.getItem(USERS_KEY);
-    if (!saved) return;
+  private applySession(session: AuthResponse | StoredSession) {
+    const user = session.user;
+    this._authed.set(true);
+    this._userId.set(user?.id ?? null);
+    this._username.set(user?.email ?? user?.name ?? null);
+    this._profile.set(user ?? null);
+    this._token.set(session.token);
+    this._expires.set(session.expires ?? null);
+    this._approved.set(this.resolveApproval(user?.status));
+    this.persistSession();
+  }
+
+  private persistSession() {
+    const token = this._token();
+    const user = this._profile();
+    if (!token || !user) {
+      localStorage.removeItem(SESSION_KEY);
+      return;
+    }
+    const payload: StoredSession = {
+      token,
+      expires: this._expires() ?? '',
+      user,
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+  }
+
+  private resolveApproval(status?: string | null) {
+    if (!status) return true;
+    const normalized = status.toLowerCase();
+    return ['approved', 'verified', 'active'].includes(normalized);
+  }
+
+  token() {
+    return this._token();
+  }
+
+  isAuthenticated() {
+    return this._authed();
+  }
+
+  isApproved() {
+    return this._approved();
+  }
+
+  username() {
+    return this._username();
+  }
+
+  userId() {
+    return this._userId();
+  }
+
+  async signIn(creds: Credentials) {
+    const email = (creds.email ?? creds.username)?.toString().trim().toLowerCase();
+    const password = creds.password?.toString().trim();
+    if (!email || !password) return false;
+    const payload = {
+      email,
+      password,
+    };
     try {
-      const parsed = JSON.parse(saved);
-      const coerced = this.coerceUsers(parsed);
-      this._users.set(coerced);
-      this.persistUsers();
-    } catch {
-      localStorage.removeItem(USERS_KEY);
+      const response = await firstValueFrom(
+        this.http.post<AuthResponse>(`${this.baseUrl}/api/auth/login`, payload)
+      );
+      this.applySession(response);
+      return true;
+    } catch (error) {
+      console.error('Login failed', error);
+      return false;
     }
   }
 
-  private coerceUsers(raw: any): Record<string, StoredUser> {
-    const result: Record<string, StoredUser> = {};
-    if (!raw || typeof raw !== 'object') return result;
-    Object.entries(raw as Record<string, any>).forEach(([key, value]) => {
-      if (value && typeof value === 'object') {
-        const password = typeof value.password === 'string' ? value.password : '';
-        if (!password) return;
-        result[key] = {
-          password,
-          approved: !!value.approved,
-          userId: typeof value.userId === 'string' ? value.userId : crypto.randomUUID()
-        };
-      } else if (typeof value === 'string') {
-        result[key] = { password: value, approved: false, userId: crypto.randomUUID() };
-      }
-    });
-    return result;
+  async signUp(creds: Credentials) {
+    const identifier = (creds.email ?? creds.username)?.toString().trim().toLowerCase();
+    const password = creds.password?.toString().trim();
+    if (!identifier || !password) return false;
+    const payload = {
+      email: identifier,
+      username: (creds.username ?? creds.email ?? identifier)?.toString().trim().toLowerCase(),
+      password,
+      name: creds.name ?? identifier,
+    };
+    try {
+      const response = await firstValueFrom(
+        this.http.post<AuthResponse>(`${this.baseUrl}/api/auth/register`, payload)
+      );
+      this.applySession(response);
+      return true;
+    } catch (error) {
+      console.error('Registration failed', error);
+      return false;
+    }
   }
 
-  private persistSession(){
-    localStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({
-        authed: this._authed(),
-        approved: this._approved(),
-        userId: this._userId(),
-        username: this._username()
-      })
-    );
-  }
-
-  private persistUsers(){
-    localStorage.setItem(USERS_KEY, JSON.stringify(this._users()));
-  }
-
-  private normalizeUsername(username: string){
-    return username.trim().toLowerCase();
-  }
-
-  isAuthenticated(){ return this._authed(); }
-  isApproved(){ return this._approved(); }
-  username(){ return this._username(); }
-  userId(){ return this._userId(); }
-
-  signIn(creds: Credentials){
-    const username = creds.username?.trim();
-    const password = creds.password?.trim();
+  async registerLocally(data: any) {
+    const username = (data?.email ?? data?.username ?? '').toString().trim().toLowerCase();
+    const password = data?.password?.toString().trim();
+    const name = `${data?.firstName ?? ''} ${data?.lastName ?? ''}`.trim() || username;
     if (!username || !password) return false;
-
-    const record = this._users()[this.normalizeUsername(username)];
-    if (!record || record.password !== password) return false;
-
-    this._authed.set(true);
-    this._approved.set(record.approved);
-    this._userId.set(record.userId);
-    this._username.set(username);
-    this.persistSession();
-    return true;
+    return this.signUp({ email: username, username, password, name });
   }
 
-  signUp(creds: Credentials){
-    const username = creds.username?.trim();
-    const password = creds.password?.trim();
-    if (!username || !password) return false;
-
-    const key = this.normalizeUsername(username);
-    const users = { ...this._users() };
-    if (users[key]) return false;
-
-    const record: StoredUser = { password, approved: false, userId: crypto.randomUUID() };
-    users[key] = record;
-    this._users.set(users);
-    this.persistUsers();
-
-    this._authed.set(true);
-    this._approved.set(record.approved);
-    this._userId.set(record.userId);
-    this._username.set(username);
-    this.persistSession();
-    return true;
-  }
-
-  registerLocally(data: any){
-    const username = data?.username ?? data?.email;
-    const password = data?.password;
-    return username && password ? this.signUp({ username, password }) : false;
-  }
-
-  setApproved(value: boolean){
+  setApproved(value: boolean) {
     this._approved.set(value);
-    const username = this._username();
-    if (username) {
-      const key = this.normalizeUsername(username);
-      const users = { ...this._users() };
-      const existing = users[key];
-      if (existing) {
-        users[key] = { ...existing, approved: value };
-        this._users.set(users);
-        this.persistUsers();
-      }
+    const user = this._profile();
+    if (user) {
+      this._profile.set({ ...user, status: value ? 'approved' : 'pending' });
+      this.persistSession();
     }
-    this.persistSession();
   }
 
-  signOut(){
+  signOut() {
     this._authed.set(false);
     this._approved.set(false);
     this._userId.set(null);
     this._username.set(null);
-    this.persistSession();
+    this._token.set(null);
+    this._expires.set(null);
+    this._profile.set(null);
+    localStorage.removeItem(SESSION_KEY);
   }
 }

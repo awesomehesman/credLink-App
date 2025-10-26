@@ -1,126 +1,217 @@
-
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { LoanOffer, LoanRequest } from '../models/loan.models';
 import { AuthService } from './auth.service';
 import { WalletService } from './wallet.service';
+import { environment } from '../../../environments/environment';
 
-const OFFERS_KEY = 'credlink-loan-offers';
-const REQUESTS_KEY = 'credlink-loan-requests';
+interface ApiLoanOffer {
+  id: string;
+  lenderId: string;
+  name: string;
+  amount: number;
+  interestRate: number;
+  negotiable?: boolean;
+  minDurationMonths: number;
+  maxDurationMonths: number;
+  minCreditScore?: number;
+  minMonthlyIncome?: number;
+  status?: string;
+  createdAt?: string;
+}
+
+interface ApiCreateOfferPayload {
+  name: string;
+  amount: number;
+  interestRate: number;
+  negotiable: boolean;
+  minDurationMonths: number;
+  maxDurationMonths: number;
+  minCreditScore?: number;
+  minMonthlyIncome?: number;
+}
+
+interface ApiUpdateOfferPayload extends ApiCreateOfferPayload {
+  status?: string;
+}
+
+type CreateOfferPayload = Omit<LoanOffer, 'id' | 'lenderId' | 'createdAt' | 'status'>;
 
 @Injectable({ providedIn: 'root' })
 export class LoanService {
+  private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
+  private readonly wallet = inject(WalletService);
+  private readonly baseUrl = environment.apiBaseUrl.replace(/\/$/, '');
+
   offers = signal<LoanOffer[]>([]);
   requests = signal<LoanRequest[]>([]);
-  constructor(private auth: AuthService, private wallet: WalletService) {
-    const o = localStorage.getItem(OFFERS_KEY);
-    const r = localStorage.getItem(REQUESTS_KEY);
-    if (o) {
-      const parsed = (JSON.parse(o) as LoanOffer[]).map((offer: any) => ({
-        id: offer.id,
-        lenderId: offer.lenderId,
-        name: offer.name ?? 'Loan Offer',
-        amount: Number(offer.amount) || 0,
-        rate: Number(offer.rate) || 0,
-        negotiable: !!offer.negotiable,
-        minDurationMonths: Number(offer.minDurationMonths) || 1,
-        maxDurationMonths: Number(offer.maxDurationMonths) || Number(offer.minDurationMonths) || 1,
-        minCreditScore: offer.minCreditScore ?? undefined,
-        minMonthlyIncome: offer.minMonthlyIncome ?? undefined,
-        createdAt: offer.createdAt ?? new Date().toISOString(),
-        status: offer.status ?? 'Open'
-      }));
-      this.offers.set(parsed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      const committed = parsed
-        .filter(offer => offer.status === 'Open')
-        .reduce((sum, offer) => sum + offer.amount, 0);
-      if (committed > 0 && this.wallet.committed() < committed) {
-        this.wallet.syncCommitted(committed);
-      }
+
+  private mapOffer(dto: ApiLoanOffer): LoanOffer {
+    return {
+      id: dto.id,
+      lenderId: dto.lenderId,
+      name: dto.name,
+      amount: dto.amount,
+      rate: dto.interestRate,
+      negotiable: dto.negotiable ?? false,
+      minDurationMonths: dto.minDurationMonths,
+      maxDurationMonths: dto.maxDurationMonths,
+      minCreditScore: dto.minCreditScore,
+      minMonthlyIncome: dto.minMonthlyIncome,
+      createdAt: dto.createdAt ?? new Date().toISOString(),
+      status: dto.status === 'Withdrawn' ? 'Withdrawn' : 'Open',
+    };
+  }
+
+  private toApiCreatePayload(source: CreateOfferPayload): ApiCreateOfferPayload {
+    return {
+      name: source.name,
+      amount: Number(source.amount),
+      interestRate: Number(source.rate),
+      negotiable: source.negotiable ?? false,
+      minDurationMonths: Number(source.minDurationMonths),
+      maxDurationMonths: Number(source.maxDurationMonths),
+      minCreditScore:
+        source.minCreditScore !== undefined ? Number(source.minCreditScore) : undefined,
+      minMonthlyIncome:
+        source.minMonthlyIncome !== undefined ? Number(source.minMonthlyIncome) : undefined,
+    };
+  }
+
+  private toApiUpdatePayload(
+    baseline: LoanOffer,
+    partial: Partial<LoanOffer>
+  ): ApiUpdateOfferPayload {
+    const merged = { ...baseline, ...partial };
+    const payload: ApiUpdateOfferPayload = {
+      ...this.toApiCreatePayload(merged),
+    };
+    const nextStatus = merged.status;
+    if (nextStatus) {
+      payload.status = nextStatus;
     }
-    if (r) this.requests.set(JSON.parse(r));
+    return payload;
   }
-  private save() {
-    localStorage.setItem(OFFERS_KEY, JSON.stringify(this.offers()));
-    localStorage.setItem(REQUESTS_KEY, JSON.stringify(this.requests()));
+
+  async refreshMyOffers() {
+    const lenderId = this.auth.userId();
+    if (!lenderId) {
+      this.offers.set([]);
+      return;
+    }
+    try {
+      const dtos = await firstValueFrom(
+        this.http.get<ApiLoanOffer[]>(`${this.baseUrl}/api/lenders/${lenderId}/offers`)
+      );
+      const mapped = dtos.map((dto) => this.mapOffer(dto));
+      this.offers.set(mapped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      const committed = mapped
+        .filter((offer) => offer.status === 'Open')
+        .reduce((sum, offer) => sum + offer.amount, 0);
+      this.wallet.syncCommitted(committed);
+    } catch (error) {
+      console.error('Unable to load offers', error);
+    }
   }
-  createOffer(partial: Omit<LoanOffer, 'id' | 'lenderId' | 'createdAt' | 'status'>) {
-    if (!this.wallet.hold(partial.amount)) {
+
+  async createOffer(partial: CreateOfferPayload): Promise<boolean> {
+    const lenderId = this.auth.userId();
+    if (!lenderId) return false;
+    if (!this.wallet.hold(partial.amount)) return false;
+    try {
+      const dto = await firstValueFrom(
+        this.http.post<ApiLoanOffer>(
+          `${this.baseUrl}/api/lenders/${lenderId}/offers`,
+          this.toApiCreatePayload(partial)
+        )
+      );
+      const offer = this.mapOffer(dto);
+      this.offers.set([offer, ...this.offers()]);
+      return true;
+    } catch (error) {
+      console.error('Unable to create offer', error);
+      this.wallet.release(partial.amount);
       return false;
     }
-    const offer: LoanOffer = {
-      id: crypto.randomUUID(),
-      lenderId: this.auth.userId() || 'anon',
-      createdAt: new Date().toISOString(),
-      status: 'Open',
-      ...partial,
-    };
-    this.offers.set([offer, ...this.offers()]);
-    this.save();
-    return true;
   }
-  removeOffer(id: string) {
-    const offer = this.offers().find(o => o.id === id);
-    if (!offer) return false;
-    if (this.requests().some((r) => r.offerId === id && r.status !== 'Declined')) return false;
-    this.wallet.release(offer.amount);
-    this.offers.set(this.offers().filter((o) => o.id !== id));
-    this.save();
-    return true;
-  }
-  updateOffer(id: string, partial: Partial<LoanOffer>) {
-    const offers = [...this.offers()];
-    const idx = offers.findIndex(o => o.id === id);
-    if (idx === -1) return false;
-    const offer = offers[idx];
-    const hasRequests = this.requests().some(r => r.offerId === id && r.status === 'Pending');
-    if (hasRequests) return false;
 
-    if (partial.amount !== undefined && partial.amount !== offer.amount) {
-      const delta = partial.amount - offer.amount;
-      if (delta > 0) {
-        if (!this.wallet.hold(delta)) return false;
-      } else {
+  async updateOffer(id: string, partial: Partial<LoanOffer>): Promise<boolean> {
+    const lenderId = this.auth.userId();
+    if (!lenderId) return false;
+
+    const offers = [...this.offers()];
+    const existingIndex = offers.findIndex((o) => o.id === id);
+    if (existingIndex === -1) return false;
+    const existing = offers[existingIndex];
+
+    const delta = partial.amount !== undefined ? partial.amount - existing.amount : 0;
+    if (delta > 0 && !this.wallet.hold(delta)) {
+      return false;
+    }
+
+    try {
+      const dto = await firstValueFrom(
+        this.http.put<ApiLoanOffer>(
+          `${this.baseUrl}/api/lenders/${lenderId}/offers/${id}`,
+          this.toApiUpdatePayload(existing, partial)
+        )
+      );
+      const updated = this.mapOffer(dto);
+      offers[existingIndex] = updated;
+      this.offers.set(
+        offers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      );
+      if (delta < 0) {
         this.wallet.release(Math.abs(delta));
       }
+      return true;
+    } catch (error) {
+      console.error('Unable to update offer', error);
+      if (delta > 0) {
+        this.wallet.release(delta);
+      }
+      return false;
     }
-
-    offers[idx] = { ...offer, ...partial };
-    this.offers.set(offers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    this.save();
-    return true;
   }
-  listEligibleOffers() {
-    return this.offers().map((o) => ({ ...o, probability: Math.max(0.2, 1 - o.rate / 100) }));
-  }
-  canRequest(borrowerId: string) {
-    return !this.requests().some((r) => r.borrowerId === borrowerId && r.status === 'Pending');
-  }
-  request(offerId: string, requestedRate?: number) {
-    const borrowerId = this.auth.userId() || 'anon';
-    if (!this.canRequest(borrowerId)) return false;
 
-    const req: LoanRequest = {
-      id: crypto.randomUUID(),
-      offerId,
-      borrowerId,
-      requestedRate,
-      status: 'Pending',
-    };
-    // add new request
-    this.requests.set([req, ...this.requests()]);
-
-    // enforce max 3 pending per offer
-    const pending = this.requests().filter((r) => r.offerId === offerId && r.status === 'Pending');
-    if (pending.length > 3) {
-      const newest = pending[0];
-      this.requests.update((arr) =>
-        arr.map((x) => (x.id === newest.id ? { ...x, status: 'Declined' } : x))
+  async removeOffer(id: string): Promise<boolean> {
+    const lenderId = this.auth.userId();
+    if (!lenderId) return false;
+    const offer = this.offers().find((o) => o.id === id);
+    try {
+      await firstValueFrom(
+        this.http.post(
+          `${this.baseUrl}/api/lenders/${lenderId}/offers/${id}/withdraw`,
+          {}
+        )
       );
+      if (offer) {
+        this.wallet.release(offer.amount);
+      }
+      this.offers.set(this.offers().filter((o) => o.id !== id));
+      return true;
+    } catch (error) {
+      console.error('Unable to withdraw offer', error);
+      return false;
     }
-
-    this.save();
-    return true;
   }
+
+  myOffers(lenderId: string) {
+    return this.offers()
+      .filter((o) => o.lenderId === lenderId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  offerRequests(offerId: string) {
+    return this.requests().filter((r) => r.offerId === offerId);
+  }
+
+  canModifyOffer(offerId: string) {
+    return this.offerRequests(offerId).every((req) => req.status !== 'Pending');
+  }
+
   decide(offerId: string, requestId: string, approve: boolean) {
     this.requests.update((arr) =>
       arr.map((r) => {
@@ -128,23 +219,24 @@ export class LoanService {
           return { ...r, status: approve ? 'Approved' : 'Declined' };
         }
         if (approve && r.offerId === offerId && r.status === 'Pending') {
-          // auto-decline other pending requests on the same offer
           return { ...r, status: 'Declined' };
         }
         return r;
       })
     );
-    this.save();
   }
-  offerRequests(offerId: string) {
-    return this.requests().filter((r) => r.offerId === offerId);
-  }
-  myOffers(lenderId: string) {
-    return this.offers()
-      .filter((o) => o.lenderId === lenderId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }
-  myRequests(borrowerId: string) {
-    return this.requests().filter((r) => r.borrowerId === borrowerId);
+
+  async listEligibleOffers(borrowerId: string) {
+    try {
+      const dtos = await firstValueFrom(
+        this.http.get<ApiLoanOffer[]>(
+          `${this.baseUrl}/api/borrowers/${borrowerId}/eligible-offers`
+        )
+      );
+      return dtos.map((dto) => this.mapOffer(dto));
+    } catch (error) {
+      console.error('Unable to load eligible offers', error);
+      return [];
+    }
   }
 }

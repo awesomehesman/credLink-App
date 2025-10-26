@@ -21,7 +21,7 @@ export class Auth {
 
   constructor(private fb: FormBuilder, private router: Router, private auth: AuthService) {
     this.signInForm = this.fb.group({
-      username: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required],
     });
 
@@ -38,10 +38,9 @@ export class Auth {
     const usernameCtrl = this.signUpForm.get('username');
     if (usernameCtrl) {
       usernameCtrl.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
-        const errors = usernameCtrl.errors;
-        if (errors?.['taken']) {
-          const { taken, ...rest } = errors;
-          usernameCtrl.setErrors(Object.keys(rest).length ? rest : null);
+        if (usernameCtrl.hasError('taken')) {
+          usernameCtrl.setErrors(null);
+          usernameCtrl.updateValueAndValidity({ emitEvent: false });
         }
       });
     }
@@ -51,12 +50,12 @@ export class Auth {
     this.isSignInSig.set(toSignIn);
   }
 
-  submitSignIn() {
+  async submitSignIn() {
     if (this.signInForm.invalid) {
       this.signInForm.markAllAsTouched();
       return;
     }
-    const success = this.auth.signIn(this.signInForm.value);
+    const success = await this.auth.signIn(this.signInForm.value);
     if (!success) {
       this.signInForm.setErrors({ invalid: true });
       return;
@@ -66,7 +65,7 @@ export class Auth {
     this.router.navigateByUrl(target);
   }
 
-  submitSignUp() {
+  async submitSignUp() {
     const { username, password, confirm } = this.signUpForm.value;
     if (this.signUpForm.invalid || password !== confirm) {
       if (password !== confirm) this.signUpForm.get('confirm')?.setErrors({ mismatch: true });
@@ -74,7 +73,7 @@ export class Auth {
       return;
     }
 
-    const success = this.auth.signUp({ username, password });
+    const success = await this.auth.signUp({ username, password });
     if (!success) {
       const usernameCtrl = this.signUpForm.get('username');
       if (usernameCtrl) {

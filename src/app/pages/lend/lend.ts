@@ -80,6 +80,8 @@ export class Lend implements OnInit {
       minCreditScore: [null, [this.optionalMinValidator(400)]],
       minMonthlyIncome: [null, [Validators.min(0)]]
     });
+
+    this.loans.refreshMyOffers();
   }
 
   private maxAvailableValidator(control: AbstractControl): ValidationErrors | null {
@@ -134,7 +136,7 @@ export class Lend implements OnInit {
     this.submitError.set(null);
   }
 
-  submit() {
+  async submit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -167,15 +169,15 @@ export class Lend implements OnInit {
     const editing = this.editingOffer();
     let ok = false;
     if (editing) {
-      ok = this.loans.updateOffer(editing.id, request as any);
+      ok = await this.loans.updateOffer(editing.id, request as any);
       if (!ok) {
-        this.submitError.set('Unable to update offer. Ensure there are no active borrower requests and sufficient wallet funds.');
+        this.submitError.set('Unable to update offer. Ensure there are no borrower conflicts and sufficient wallet funds.');
         return;
       }
     } else {
-      ok = this.loans.createOffer(request as any);
+      ok = await this.loans.createOffer(request as any);
       if (!ok) {
-        this.submitError.set('Insufficient wallet balance to create this loan offer.');
+        this.submitError.set('Unable to create loan offer. Check wallet balance or try again.');
         return;
       }
     }
@@ -184,8 +186,8 @@ export class Lend implements OnInit {
     this.currentPage.set(0);
   }
 
-  withdraw(id: string) {
-    const success = this.loans.removeOffer(id);
+  async withdraw(id: string) {
+    const success = await this.loans.removeOffer(id);
     if (!success) {
       this.submitError.set('Unable to withdraw this loan. Ensure it has no pending borrower requests.');
     }
@@ -196,7 +198,7 @@ export class Lend implements OnInit {
   }
 
   canModify(offerId: string) {
-    return this.requestsFor(offerId).every(r => r.status !== 'Pending');
+    return this.loans.canModifyOffer(offerId);
   }
 
   prevPage() {
