@@ -10,8 +10,8 @@ import { OnboardingSteps } from '../../shared/components/stepper/stepper';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDatepickerToggle } from '@angular/material/datepicker';
 import { MatSelectModule } from '@angular/material/select';
+import { ProfileService } from '../../shared/services/profile.service';
 
 @Component({
   standalone: true,
@@ -21,8 +21,15 @@ import { MatSelectModule } from '@angular/material/select';
   styleUrls: ['./onboarding-personal.scss']
 })
 export class OnboardingPersonal implements OnInit {
-  constructor(private fb: FormBuilder, private router: Router){}
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private profile: ProfileService
+  ){}
   form!: FormGroup;
+  saving = false;
+  loadError: string | null = null;
+  submitError: string | null = null;
 
   // provinces for South Africa
   provinces = [
@@ -53,6 +60,48 @@ export class OnboardingPersonal implements OnInit {
       postalCode: ['', [Validators.required]],
       country: ['South Africa', [Validators.required]]
     });
+    void this.prefill();
   }
-  submit(){ if (this.form.invalid) { this.form.markAllAsTouched(); return; } localStorage.setItem('credlink-profile', JSON.stringify(this.form.value)); this.router.navigateByUrl('/onboarding/kyc'); }
+
+  async submit(){
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.saving = true;
+    this.submitError = null;
+    try {
+      await this.profile.savePersonalInfo(this.form.value);
+      this.router.navigateByUrl('/onboarding/kyc');
+    } catch {
+      this.submitError = 'Unable to save your details. Please try again.';
+    } finally {
+      this.saving = false;
+    }
+  }
+
+  private async prefill() {
+    this.loadError = null;
+    try {
+      const profile = await this.profile.fetchPersonalInfo();
+      if (!profile) return;
+      this.form.patchValue({
+        firstName: profile.firstName ?? '',
+        middleName: profile.middleName ?? '',
+        lastName: profile.lastName ?? '',
+        email: profile.email ?? '',
+        phone: profile.phoneNumber ?? '',
+        dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth) : null,
+        nationalIdOrPassport: profile.governmentId ?? '',
+        idExpiry: profile.idExpiry ? new Date(profile.idExpiry) : null,
+        street: profile.address?.street ?? '',
+        city: profile.address?.city ?? '',
+        province: profile.address?.province ?? '',
+        postalCode: profile.address?.postalCode ?? '',
+        country: profile.address?.country ?? this.form.get('country')?.value ?? 'South Africa'
+      });
+    } catch {
+      this.loadError = 'We could not load your existing profile. You can still continue.';
+    }
+  }
 }

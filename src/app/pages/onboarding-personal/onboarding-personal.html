@@ -11,6 +11,12 @@
     </div>
     <h2>Personal information</h2>
     <form (ngSubmit)="submit()" [formGroup]="form" novalidate class="grid">
+      @if (loadError) {
+        <div class="alert info">{{ loadError }}</div>
+      }
+      @if (submitError) {
+        <div class="alert error">{{ submitError }}</div>
+      }
       <mat-form-field appearance="outline"><mat-label>First name</mat-label><input matInput formControlName="firstName"></mat-form-field>
       <mat-form-field appearance="outline"><mat-label>Middle name</mat-label><input matInput formControlName="middleName"></mat-form-field>
       <mat-form-field appearance="outline"><mat-label>Last name</mat-label><input matInput formControlName="lastName"></mat-form-field>
@@ -42,7 +48,11 @@
         <mat-label>Country</mat-label>
         <input matInput formControlName="country" readonly aria-readonly="true" />
       </mat-form-field>
-      <div class="actions full"><button mat-raised-button color="primary" type="submit" class="btn--wide">Continue</button></div>
+      <div class="actions full">
+        <button mat-raised-button color="primary" type="submit" class="btn--wide" [disabled]="saving">
+          {{ saving ? 'Saving…' : 'Continue' }}
+        </button>
+      </div>
     </form>
   </mat-card>
 </div>
