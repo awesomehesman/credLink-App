@@ -1,6 +1,9 @@
 import { Component, computed, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatDialog } from '@angular/material/dialog';
 import { WalletService } from '../../shared/services/wallet.service';
+import { WalletAddFundsDialog } from '../../shared/components/header/wallet-add-dialog';
+import { WalletWithdrawDialog } from '../../shared/components/header/wallet-withdraw-dialog';
 
 type LenderTabId = 'marketplace' | 'active' | 'history';
 
@@ -87,6 +90,7 @@ interface LenderTab {
 })
 export class Dashboard {
   private readonly wallet = inject(WalletService);
+  private readonly dialog = inject(MatDialog);
   private readonly summaryData: BorrowerSummaryItem[] = [
     {
       label: 'Amount Owed',
@@ -377,6 +381,31 @@ export class Dashboard {
   readonly pendingWithdrawLoanId = signal<string | null>(null);
   readonly pendingDeclineRequest = signal<{ loanId: string; requestId: string } | null>(null);
   readonly selectedDeclineReason = signal<string | null>(null);
+
+  openAddFunds() {
+    this.dialog.open(WalletAddFundsDialog, {
+      width: '520px',
+      panelClass: 'wallet-dialog-panel',
+      disableClose: true,
+      data: {
+        balance: this.wallet.available(),
+        banks: this.wallet.banks(),
+        summary: this.wallet.summary(),
+      },
+    });
+  }
+
+  openWithdrawFunds() {
+    this.dialog.open(WalletWithdrawDialog, {
+      width: '560px',
+      panelClass: 'wallet-dialog-panel',
+      disableClose: true,
+      data: {
+        balance: this.wallet.summary(),
+        profile: this.wallet.withdrawProfile(),
+      },
+    });
+  }
 
   switchMode(mode: 'borrower' | 'lender') {
     this.activeMode.set(mode);

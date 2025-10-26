@@ -21,6 +21,15 @@ export interface WalletBank {
   reference: string;
 }
 
+export interface WalletWithdrawProfile {
+  accountName: string;
+  bank: string;
+  branchCode: string;
+  branchName: string;
+  accountNumber: string;
+  ficaVerified: boolean;
+}
+
 interface ApiWallet {
   available?: number;
   committed?: number;
@@ -63,6 +72,15 @@ export const WALLET_BANKS: WalletBank[] = [
     reference: 'CL-SB-784563',
   },
 ];
+
+export const DEFAULT_WITHDRAW_PROFILE: WalletWithdrawProfile = {
+  accountName: 'K Hesman',
+  bank: 'Capitec',
+  branchCode: '470010',
+  branchName: '470010',
+  accountNumber: '154899XXXX',
+  ficaVerified: true,
+};
 
 @Injectable({ providedIn: 'root' })
 export class WalletService {
@@ -108,6 +126,10 @@ export class WalletService {
 
   banks(): WalletBank[] {
     return WALLET_BANKS;
+  }
+
+  withdrawProfile(): WalletWithdrawProfile {
+    return DEFAULT_WITHDRAW_PROFILE;
   }
 
   async refresh(): Promise<void> {

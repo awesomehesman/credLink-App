@@ -11,14 +11,6 @@ import { WalletAddFundsDialog } from './wallet-add-dialog';
 import { WalletWithdrawDialog } from './wallet-withdraw-dialog';
 import { WalletService, WALLET_BANKS } from '../../services/wallet.service';
 
-const WITHDRAW_DETAILS = {
-  accountName: 'K Hesman',
-  bank: 'Capitec',
-  branchCode: '470010',
-  branchName: '470010',
-  accountNumber: '154899XXXX',
-  ficaVerified: true
-};
 
 @Component({
   selector: 'app-header',
@@ -69,7 +61,7 @@ export class Header {
       disableClose: true,
       data: {
         balance: this.walletSummary(),
-        profile: WITHDRAW_DETAILS
+        profile: this.wallet.withdrawProfile()
       }
     }).afterClosed().subscribe(result => {
       if (!result || typeof result.amount !== 'number') return;
