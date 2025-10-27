@@ -112,6 +112,36 @@
   border-radius: 12px;
 }
 
+.no-funds-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 18px;
+  background: rgba(15, 107, 103, 0.08);
+  border: 1px dashed rgba(15, 107, 103, 0.4);
+
+  h2 {
+    margin: 0 0 6px;
+    font-size: 20px;
+    color: #0f6b67;
+  }
+
+  p {
+    margin: 0;
+    color: rgba(16, 42, 35, 0.7);
+  }
+
+  .actions {
+    flex-shrink: 0;
+
+    a {
+      min-width: 160px;
+    }
+  }
+}
+
 .offers-card {
   display: flex;
   flex-direction: column;

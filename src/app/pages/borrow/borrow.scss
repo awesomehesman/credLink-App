@@ -90,36 +90,50 @@
     color: #123126;
   }
 
-  &__term {
+  &__meta {
     margin: 0;
-    font-size: 14px;
-    color: rgba(18, 49, 38, 0.65);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+
+    dt {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 0 0 4px;
+      color: rgba(18, 49, 38, 0.55);
+    }
+
+    dd {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(18, 49, 38, 0.78);
+      font-weight: 600;
+    }
   }
 
-  &__chance {
-    align-self: flex-start;
+  &__footer {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
     font-size: 13px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: rgba(28, 124, 99, 0.1);
-    color: #1c7c63;
-
-    &[data-level='moderate'] {
-      background: rgba(255, 193, 58, 0.18);
-      color: #a36300;
-    }
-
-    &[data-level='lower'] {
-      background: rgba(231, 76, 60, 0.16);
-      color: #a0311f;
-    }
+    color: rgba(18, 49, 38, 0.6);
   }
 
-  &__description {
-    margin: 0;
-    font-size: 14px;
-    color: rgba(18, 49, 38, 0.65);
+  &__timestamp {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__negotiable {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(28, 124, 99, 0.12);
+    color: #1c7c63;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   &__actions {
@@ -155,6 +169,12 @@
       background: rgba(28, 124, 99, 0.16);
     }
   }
+
+  &--small {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 999px;
+  }
 }
 
 .empty-state {
@@ -172,6 +192,27 @@
 
   p {
     margin: 0;
+  }
+}
+
+.status-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-size: 14px;
+  margin-bottom: 16px;
+
+  &.info {
+    background: rgba(13, 110, 253, 0.12);
+    color: #0b4aa2;
+  }
+
+  &.error {
+    background: rgba(220, 53, 69, 0.12);
+    color: #8a1f2b;
   }
 }
 

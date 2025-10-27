@@ -1,105 +1,113 @@
-import { Component, computed, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-
-type BorrowerSectionId = 'preApproved' | 'shortTerm' | 'longTerm';
-
-interface BorrowerLoan {
-  badge?: string;
-  provider: string;
-  amount: string;
-  duration: string;
-  approvalChance: 'Excellent' | 'Moderate' | 'Lower';
-  description: string;
-  primaryAction: string;
-  secondaryAction: string;
-}
-
-interface BorrowerSection {
-  id: BorrowerSectionId;
-  title: string;
-  subtitle: string;
-  items: BorrowerLoan[];
-}
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { LoanService } from '../../shared/services/loan.service';
+import { LoanOffer } from '../../shared/models/loan.models';
+import { AuthService } from '../../shared/services/auth.service';
 
 @Component({
   standalone: true,
   selector: 'app-borrow',
-  imports: [CommonModule],
+  imports: [CommonModule, CurrencyPipe, DatePipe],
   templateUrl: './borrow.html',
   styleUrls: ['./borrow.scss']
 })
 export class Borrow {
-  private readonly sectionsData: BorrowerSection[] = [
-    {
-      id: 'preApproved',
-      title: 'Your pre-approved loans',
-      subtitle: 'Hand-picked offers ready for quick approval.',
-      items: [
-        {
-          badge: 'Pre-approved',
-          provider: 'finchoice',
-          amount: 'Borrow up to R1 000',
-          duration: '6 to 12 months',
-          approvalChance: 'Excellent',
-          description: 'Get funded in as little as 24 hours with flexible repayment options.',
-          primaryAction: 'Borrow now',
-          secondaryAction: 'More details'
-        },
-        {
-          badge: 'Pre-approved',
-          provider: 'unifi',
-          amount: 'Borrow up to R4 000',
-          duration: '9 to 3 months',
-          approvalChance: 'Excellent',
-          description: 'Competitive interest rates with no early settlement penalties.',
-          primaryAction: 'Borrow now',
-          secondaryAction: 'More details'
-        }
-      ]
-    },
-    {
-      id: 'shortTerm',
-      title: 'Short term personal loans',
-      subtitle: 'Curated based on your credit behaviour and borrowing history.',
-      items: [
-        {
-          provider: 'Sanlam',
-          amount: 'Borrow up to R10 000',
-          duration: 'Term 12 to 24 months',
-          approvalChance: 'Excellent',
-          description: 'Complete the application online with a quick decision.',
-          primaryAction: 'Borrow now',
-          secondaryAction: 'Details'
-        },
-        {
-          provider: 'Wonga',
-          amount: 'Borrow up to R4 000',
-          duration: 'Term 12 to 45 months',
-          approvalChance: 'Moderate',
-          description: 'Personalised support from start to finish to ensure a smooth experience.',
-          primaryAction: 'Borrow now',
-          secondaryAction: 'Details'
-        }
-      ]
-    },
-    {
-      id: 'longTerm',
-      title: 'Long term personal loans',
-      subtitle: 'Larger amounts with longer repayment cycles tailored for stability.',
-      items: [
-        {
-          provider: 'ABSA',
-          amount: 'Higher limits available',
-          duration: '60 month term',
-          approvalChance: 'Lower',
-          description: 'Structured repayment plans with optional payment holidays.',
-          primaryAction: 'Borrow now',
-          secondaryAction: 'Manage'
-        }
-      ]
-    }
-  ];
+  private readonly loanService = inject(LoanService);
+  private readonly auth = inject(AuthService);
 
-  readonly sections = signal<BorrowerSection[]>(this.sectionsData);
-  readonly hasLoans = computed(() => this.sections().some(section => section.items.length > 0));
+  readonly loading = signal<boolean>(false);
+  readonly error = signal<string | null>(null);
+  readonly offers = signal<LoanOffer[]>([]);
+  private readonly activeBorrowerId = signal<string | null>(null);
+
+  readonly hasLoans = computed(
+    () => !this.loading() && !this.error() && this.offers().length > 0
+  );
+
+  readonly cards = computed(() =>
+    this.offers().map((offer) => ({
+      id: offer.id,
+      label: offer.name,
+      amount: offer.amount,
+      rate: offer.rate,
+      term: this.describeTerm(offer),
+      requirements: this.describeRequirements(offer),
+      created: offer.createdAt,
+      negotiable: offer.negotiable,
+      badge: this.badgeForOffer(offer),
+    }))
+  );
+
+  constructor() {
+    effect(
+      () => {
+        const id = this.auth.userId();
+        if (!id) {
+          this.activeBorrowerId.set(null);
+          this.error.set(null);
+          this.offers.set([]);
+          this.loading.set(false);
+          return;
+        }
+        if (this.activeBorrowerId() === id && this.offers().length) {
+          return;
+        }
+        this.activeBorrowerId.set(id);
+        void this.loadOffers(id);
+      },
+      { allowSignalWrites: true }
+    );
+  }
+
+  async refresh(): Promise<void> {
+    const id = this.activeBorrowerId();
+    if (!id) {
+      return;
+    }
+    await this.loadOffers(id);
+  }
+
+  private async loadOffers(borrowerId: string) {
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      const offers = await this.loanService.listEligibleOffers(borrowerId);
+      this.offers.set(offers);
+    } catch (error) {
+      console.error(error);
+      this.error.set('Unable to load loan offers right now. Please try again shortly.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  private describeTerm(offer: LoanOffer): string {
+    const min = offer.minDurationMonths;
+    const max = offer.maxDurationMonths;
+    if (min === max) {
+      return `${min} month term`;
+    }
+    return `${min}-${max} month term`;
+  }
+
+  private describeRequirements(offer: LoanOffer): string {
+    const parts: string[] = [];
+    if (offer.minCreditScore) {
+      parts.push(`Credit score ≥ ${offer.minCreditScore}`);
+    }
+    if (offer.minMonthlyIncome) {
+      parts.push(`Income ≥ R${offer.minMonthlyIncome.toLocaleString('en-ZA')}`);
+    }
+    if (parts.length === 0) {
+      return 'Flexible qualification requirements';
+    }
+    return parts.join(' • ');
+  }
+
+  private badgeForOffer(offer: LoanOffer): string | null {
+    if (offer.status === 'Withdrawn') return 'Unavailable';
+    if (offer.rate <= 12) return 'Top Match';
+    if (offer.negotiable) return 'Negotiable';
+    return null;
+  }
 }
