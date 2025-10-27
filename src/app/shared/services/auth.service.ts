@@ -121,10 +121,7 @@ export class AuthService {
     const email = (creds.email ?? creds.username)?.toString().trim().toLowerCase();
     const password = creds.password?.toString().trim();
     if (!email || !password) return false;
-    const payload = {
-      email,
-      password,
-    };
+    const payload = { username: email, password };
     try {
       const response = await firstValueFrom(
         this.http.post<AuthResponse>(`${this.baseUrl}/api/auth/login`, payload)

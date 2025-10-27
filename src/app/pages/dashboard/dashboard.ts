@@ -1,386 +1,376 @@
-import { Component, computed, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatDialog } from '@angular/material/dialog';
+import { CommonModule, DatePipe } from '@angular/common';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { Router } from '@angular/router';
+import { DashboardService } from '../../shared/services/dashboard.service';
+import {
+  BorrowerDashboardData,
+  BorrowerLoan,
+  LenderBorrowerRequest,
+  LenderDashboardData,
+  LenderMarketplaceLoan,
+  LenderPortfolioLoan,
+} from '../../shared/models/dashboard.models';
+import { AuthService } from '../../shared/services/auth.service';
 import { WalletService } from '../../shared/services/wallet.service';
 import { WalletAddFundsDialog } from '../../shared/components/header/wallet-add-dialog';
 import { WalletWithdrawDialog } from '../../shared/components/header/wallet-withdraw-dialog';
 
+type DashboardMode = 'lender' | 'borrower';
 type LenderTabId = 'marketplace' | 'active' | 'history';
 
-type BorrowerTabId = 'pending' | 'active' | 'history';
-
-interface BorrowerSummaryItem {
+interface SummaryCard {
   label: string;
   value: string;
   helper?: string;
   accent?: boolean;
 }
 
-interface BorrowerLoanCard {
-  name: string;
-  lender: string;
-  amountOwed: string;
-  term: string;
-  startDate: string;
-  interestRate: string;
-  nextPayment?: string;
-  interestPaid?: string;
-  totalPaid?: string;
+interface MarketplaceCard {
+  id: string;
+  title: string;
+  amount?: string;
+  rate?: string;
+  duration?: string;
+  minCreditScore?: string;
+  minMonthlyIncome?: string;
   status?: string;
-  completionDate?: string;
-  statusTone?: 'pending' | 'approved' | 'rejected' | 'info';
-  rejectionReason?: string;
+  created?: string;
+  badge?: string;
+  requests: MarketplaceRequestCard[];
+}
+
+interface MarketplaceRequestCard {
+  id: string;
+  borrower: string;
+  submitted?: string;
+  creditScore?: string;
+  monthlyIncome?: string;
+  credibility?: string;
+  status?: string;
+  note?: string;
+}
+
+interface PortfolioCard {
+  id: string;
+  title: string;
+  borrower?: string;
+  principal?: string;
+  interestRate?: string;
+  term?: string;
+  startDate?: string;
+  accruedInterest?: string;
+  status?: string;
+  completed?: string;
+}
+
+type BorrowerTabId = 'pending' | 'active' | 'history';
+
+interface BorrowerLoanCard {
+  id: string;
+  name: string;
+  lender?: string;
+  amountBadge?: string;
+  meta: Array<{ label: string; value: string }>;
+  status?: string;
+  tone?: 'pending' | 'approved' | 'rejected' | 'info';
+  note?: string;
 }
 
 interface BorrowerTab {
   id: BorrowerTabId;
   label: string;
   description: string;
+  emptyTitle: string;
+  emptyCopy: string;
   loans: BorrowerLoanCard[];
-}
-
-interface LenderOverviewItem {
-  label: string;
-  value: string;
-  accent?: boolean;
-}
-
-interface BorrowerRequest {
-  id: string;
-  requester: string;
-  creditScore: string;
-  monthlyIncome: string;
-  credibility: 'Excellent' | 'Good' | 'Moderate' | 'Low';
-  submittedDate: string;
-  status?: 'Pending' | 'Approved' | 'Declined';
-  note?: string;
-  declineReason?: string;
-}
-
-interface LenderLoan {
-  id: string;
-  name: string;
-  amount: string;
-  term: string;
-  interestRate: string;
-  borrower?: string;
-  startDate?: string;
-  createdDate?: string;
-  accruedInterest?: string;
-  status?: string;
-  durationWindow?: string;
-  minCreditScore?: string;
-  minMonthlyIncome?: string;
-  borrowerRequests?: BorrowerRequest[];
-}
-
-interface LenderTab {
-  id: LenderTabId;
-  label: string;
-  description: string;
-  loans: LenderLoan[];
 }
 
 @Component({
   standalone: true,
   selector: 'app-dashboard',
-  imports: [CommonModule],
+  imports: [CommonModule, DatePipe, MatDialogModule],
   templateUrl: './dashboard.html',
-  styleUrls: ['./dashboard.scss'],
+  styleUrl: './dashboard.scss',
 })
 export class Dashboard {
-  private readonly wallet = inject(WalletService);
+  private readonly auth = inject(AuthService);
+  private readonly walletService = inject(WalletService);
+  private readonly dashboardService = inject(DashboardService);
+  private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
-  private readonly summaryData: BorrowerSummaryItem[] = [
-    {
-      label: 'Amount Owed',
-      value: 'R 185 400',
-      helper: 'Total outstanding balance across all active loans',
-    },
-    { label: 'Interest Paid', value: 'R 28 750', helper: 'Cumulative interest settled to date' },
-    {
-      label: 'Next Payment',
-      value: 'R 3 250 • 30 Oct',
-      helper: 'Upcoming repayment due soon',
-      accent: true,
-    },
-  ];
 
-  private readonly tabsData: BorrowerTab[] = [
-    {
-      id: 'pending',
-      label: 'Pending Loans',
-      description: 'Loans you have requested that are in review process.',
-      loans: [
-        {
-          name: 'EduFlex Study Loan',
-          lender: 'Issued by EduFlex Finance',
-          amountOwed: 'Borrowed • R 45 000',
-          term: '12 month term',
-          startDate: 'Application date • 14/10/2024',
-          interestRate: 'Proposed rate • 11.2%',
-          status: 'Pending review',
-          statusTone: 'pending'
-        },
-        {
-          name: 'CityBuild Home Upgrade',
-          lender: 'Issued by CityBuild Capital',
-          amountOwed: 'Borrowed • R 95 000',
-          term: '24 month term',
-          startDate: 'Application date • 05/10/2024',
-          interestRate: 'Proposed rate • 12.7%',
-          status: 'Under review',
-          statusTone: 'pending'
-        }
-      ]
-    },
-    {
-      id: 'active',
-      label: 'Active Loans',
-      description: 'Your loans currently in progress with remaining balances and upcoming repayments.',
-      loans: [
-        {
-          name: 'MicroFinance Personal Loan',
-          lender: 'Issued by MicroFinance Inc.',
-          amountOwed: 'R 68 200 remaining',
-          term: '12 month term',
-          startDate: 'Start date • 01/12/2023',
-          interestRate: 'Interest rate • 12.0%',
-          nextPayment: 'Next payment • R 3 250 due 30 Oct',
-          interestPaid: 'Interest paid • R 6 400',
-          status: 'Approved • On track',
-          statusTone: 'approved'
-        },
-        {
-          name: 'Loan Investments Pty',
-          lender: 'Issued by Loan Investments Pty',
-          amountOwed: 'R 117 200 remaining',
-          term: '48 month term',
-          startDate: 'Start date • 01/02/2023',
-          interestRate: 'Interest rate • 13.5%',
-          nextPayment: 'Next payment • R 5 100 due 12 Nov',
-          interestPaid: 'Interest paid • R 22 350',
-          status: 'Approved • On track',
-          statusTone: 'approved'
-        },
-      ],
-    },
-    {
-      id: 'history',
-      label: 'Loan History',
-      description: 'Your completed loans with repayment performance and totals paid off.',
-      loans: [
-        {
-          name: 'BizStart SME Working Capital',
-          lender: 'Issued by BizStart SME',
-          amountOwed: 'Settled • 04/12/2023',
-          term: '18 month term',
-          startDate: 'Start date • 01/06/2022',
-          interestRate: 'Interest rate • 11.5%',
-          totalPaid: 'Total paid • R 168 400',
-          status: 'Closed in good standing',
-          statusTone: 'info'
-        },
-        {
-          name: 'Harvest Co-op Seasonal Loan',
-          lender: 'Issued by Harvest Co-op',
-          amountOwed: 'Settled • 01/05/2023',
-          term: '24 month term',
-          startDate: 'Start date • 01/04/2021',
-          interestRate: 'Interest rate • 10.2%',
-          totalPaid: 'Total paid • R 106 200',
-          status: 'Closed in good standing',
-          statusTone: 'info'
-        },
-        {
-          name: 'SwiftRide Mobility Loan',
-          lender: 'Issued by SwiftRide Finance',
-          amountOwed: 'Application closed • 20/09/2024',
-          term: '18 month term',
-          startDate: 'Application date • 28/08/2024',
-          interestRate: 'Offered rate • 13.9%',
-          status: 'Rejected',
-          statusTone: 'rejected',
-          rejectionReason: 'Insufficient disposable income for requested amount'
-        },
-      ],
-    },
-  ];
-
-  readonly borrowerSummary = signal<BorrowerSummaryItem[]>(this.summaryData);
-  readonly borrowerTabs = signal<BorrowerTab[]>(this.tabsData);
+  readonly activeMode = signal<DashboardMode>('lender');
+  readonly activeLenderTab = signal<LenderTabId>('marketplace');
   readonly activeBorrowerTab = signal<BorrowerTabId>('active');
 
-  readonly currentTab = computed(() =>
-    this.borrowerTabs().find((tab) => tab.id === this.activeBorrowerTab())
+  private readonly lenderDashboard = signal<LenderDashboardData | null>(null);
+  private readonly lenderLoadedFor = signal<string | null>(null);
+  private readonly lenderLoading = signal(false);
+  private readonly lenderError = signal<string | null>(null);
+  private readonly lenderLastSynced = signal<Date | null>(null);
+
+  private readonly borrowerDashboard = signal<BorrowerDashboardData | null>(null);
+  private readonly borrowerLoadedFor = signal<string | null>(null);
+  private readonly borrowerLoading = signal(false);
+  private readonly borrowerError = signal<string | null>(null);
+  private readonly borrowerLastSynced = signal<Date | null>(null);
+
+  constructor() {
+    effect(
+      () => {
+        const userId = this.auth.userId();
+        if (!userId) {
+          this.resetBorrowerState();
+          return;
+        }
+        if (this.borrowerLoadedFor() === userId) {
+          return;
+        }
+        this.borrowerLoadedFor.set(userId);
+        void this.loadBorrowerData(userId);
+      },
+      { allowSignalWrites: true }
+    );
+
+    effect(
+      () => {
+        const userId = this.auth.userId();
+        if (!userId) {
+          this.resetLenderState();
+          return;
+        }
+        if (this.lenderLoadedFor() === userId) {
+          return;
+        }
+        this.lenderLoadedFor.set(userId);
+        void this.loadLenderData(userId);
+      },
+      { allowSignalWrites: true }
+    );
+  }
+
+  readonly lenderSummaryCards = computed<SummaryCard[]>(() => {
+    const snapshot = this.lenderDashboard();
+    const walletSummary = this.walletService.summary();
+
+    if (!snapshot) {
+      return [
+        { label: 'Total value', value: this.formatCurrency(walletSummary.available ?? 0) },
+        { label: 'Accumulated interest', value: this.formatCurrency(0) },
+        { label: 'Earnings available', value: this.formatPercent(0), accent: true },
+      ];
+    }
+
+    const summary = snapshot.summary;
+    const lastSynced = this.lenderLastSynced();
+    const helper = lastSynced ? `Updated ${lastSynced.toLocaleString()}` : undefined;
+
+    return [
+      {
+        label: 'Total value',
+        value: this.formatCurrency(summary.totalValue ?? walletSummary.available ?? 0),
+        helper,
+      },
+      {
+        label: 'Accumulated interest',
+        value: this.formatCurrency(summary.accumulatedInterest ?? 0, { showPlus: true }),
+      },
+      {
+        label: 'Earnings available',
+        value: summary.earningsAvailablePercent !== undefined
+          ? this.formatPercent(summary.earningsAvailablePercent, { showPlus: true })
+          : this.formatCurrency(summary.earningsAvailableAmount ?? 0, { showPlus: true }),
+        accent: true,
+      },
+    ];
+  });
+
+  readonly borrowerSummaryCards = computed<SummaryCard[]>(() => {
+    const snapshot = this.borrowerDashboard();
+    const summary = snapshot?.summary;
+    const nextPaymentValue =
+      summary?.nextPaymentAmount !== undefined
+        ? `${this.formatCurrency(summary.nextPaymentAmount)}${
+            summary?.nextPaymentDate ? ` • ${this.formatDate(summary.nextPaymentDate, 'short')}` : ''
+          }`
+        : summary?.nextPaymentLabel ?? 'No upcoming payment';
+    const nextPaymentHelper =
+      summary?.nextPaymentLabel ??
+      (summary?.nextPaymentDate ? 'Upcoming repayment due soon' : 'No upcoming repayments scheduled');
+
+    return [
+      {
+        label: 'Amount owed',
+        value: this.formatCurrency(summary?.amountOwed ?? 0),
+        helper: 'Total outstanding balance across all active loans',
+      },
+      {
+        label: 'Interest paid',
+        value: this.formatCurrency(summary?.interestPaid ?? 0),
+        helper: 'Cumulative interest settled to date',
+      },
+      {
+        label: 'Next payment',
+        value: nextPaymentValue,
+        helper: nextPaymentHelper,
+        accent: true,
+      },
+    ];
+  });
+
+  readonly lenderTabs = computed(() => [
+    {
+      id: 'marketplace' as const,
+      label: 'Loan Marketplace',
+      description: 'Your newly listed loans seeking borrowers right now.',
+    },
+    {
+      id: 'active' as const,
+      label: 'Active Loans',
+      description: 'Your capital currently earning returns.',
+    },
+    {
+      id: 'history' as const,
+      label: 'Loan History',
+      description: 'Completed investments and their performance.',
+    },
+  ]);
+
+  readonly currentLenderTab = computed(() =>
+    this.lenderTabs().find(tab => tab.id === this.activeLenderTab()) ?? this.lenderTabs()[0]
   );
+
+  readonly borrowerTabs = computed<BorrowerTab[]>(() => {
+    const snapshot = this.borrowerDashboard();
+    const build = (
+      id: BorrowerTabId,
+      label: string,
+      description: string,
+      emptyTitle: string,
+      emptyCopy: string,
+      source?: BorrowerLoan[],
+    ): BorrowerTab => ({
+      id,
+      label,
+      description,
+      emptyTitle,
+      emptyCopy,
+      loans: (source ?? []).map(loan => this.toBorrowerCard(loan, id)),
+    });
+
+    return [
+      build(
+        'pending',
+        'Pending Loans',
+        'Loans you have requested that are in review process.',
+        'No loans to show',
+        'Once loans appear in this category they will be listed here.',
+        snapshot?.pending
+      ),
+      build(
+        'active',
+        'Active Loans',
+        'Your loans currently in progress with remaining balances and upcoming repayments.',
+        'No active loans',
+        'We will notify you as soon as new borrowing activity resumes.',
+        snapshot?.active
+      ),
+      build(
+        'history',
+        'Loan History',
+        'Your completed loans with repayment performance and totals paid off.',
+        'No loan history yet',
+        'Completed or closed loans will appear here for reference.',
+        snapshot?.history
+      ),
+    ];
+  });
+
+  readonly currentBorrowerTab = computed(() => {
+    const tabs = this.borrowerTabs();
+    return tabs.find(tab => tab.id === this.activeBorrowerTab()) ?? tabs[0];
+  });
+
+  readonly borrowerCurrentLoans = computed(() => this.currentBorrowerTab().loans);
+
+  readonly lenderMarketplaceCards = computed<MarketplaceCard[]>(() => {
+    const data = this.lenderDashboard()?.marketplace ?? [];
+    return data.map(loan => this.toMarketplaceCard(loan));
+  });
+
+  readonly lenderActiveCards = computed<PortfolioCard[]>(() => {
+    const data = this.lenderDashboard()?.activeLoans ?? [];
+    return data.map(loan => this.toPortfolioCard(loan));
+  });
+
+  readonly lenderHistoryCards = computed<PortfolioCard[]>(() => {
+    const data = this.lenderDashboard()?.history ?? [];
+    return data.map(loan => this.toPortfolioCard(loan));
+  });
+
+  readonly lenderCurrentCards = computed(() => {
+    switch (this.activeLenderTab()) {
+      case 'active':
+        return this.lenderActiveCards();
+      case 'history':
+        return this.lenderHistoryCards();
+      case 'marketplace':
+      default:
+        return this.lenderMarketplaceCards();
+    }
+  });
+
+  switchMode(mode: DashboardMode) {
+    this.activeMode.set(mode);
+    if (mode === 'borrower') {
+      this.activeBorrowerTab.set('active');
+    }
+  }
+
+  setLenderTab(tab: LenderTabId) {
+    this.activeLenderTab.set(tab);
+  }
 
   setBorrowerTab(tab: BorrowerTabId) {
     this.activeBorrowerTab.set(tab);
   }
 
-  private readonly lenderOverviewData: LenderOverviewItem[] = [
-    { label: 'Total Value', value: 'R 1 540 000' },
-    { label: 'Accumulated Interest', value: '+ 210 750' },
-    { label: 'Earnings Available', value: '+ 15.8%', accent: true },
-  ];
+  isLenderLoading() {
+    return this.lenderLoading();
+  }
 
-  private readonly lenderTabMeta: Record<LenderTabId, { label: string; description: string }> = {
-    marketplace: {
-      label: 'Loan Marketplace',
-      description: 'Your newly listed loans seeking borrowers right now.',
-    },
-    active: {
-      label: 'Active Loans',
-      description: 'Your capital currently earning returns.',
-    },
-    history: {
-      label: 'Loan History',
-      description: 'Completed investments and their performance.',
-    },
-  };
+  lenderErrorMessage() {
+    return this.lenderError();
+  }
 
-  private readonly lenderMarketplaceLoans = signal<LenderLoan[]>([
-    {
-      id: 'marketplace-1',
-      name: 'Forest Views',
-      amount: 'ZAR10,000.00',
-      term: 'Listing',
-      createdDate: 'Oct 24, 2025',
-      interestRate: '12%',
-      status: 'New listing',
-      durationWindow: '6 - 12 months',
-      minCreditScore: '620',
-      minMonthlyIncome: 'ZAR15,000.00',
-      borrowerRequests: [
-        {
-          id: 'request-1',
-          requester: 'Akani Mathebula',
-          creditScore: '642',
-          monthlyIncome: 'ZAR14,200.00',
-          credibility: 'Good',
-          submittedDate: 'Submitted Oct 26, 2025',
-          status: 'Pending',
-          note: 'Requesting funds to expand an eco-tourism cabin offering.',
-        },
-      ],
-    },
-    {
-      id: 'marketplace-2',
-      name: 'StayTRU Loans',
-      amount: 'ZAR1,000.00',
-      term: 'Listing',
-      createdDate: 'Oct 24, 2025',
-      interestRate: '18%',
-      status: 'New listing',
-      durationWindow: '6 - 12 months',
-      minCreditScore: '620',
-      minMonthlyIncome: 'ZAR15,000.00',
-      borrowerRequests: [],
-    },
-    {
-      id: 'marketplace-3',
-      name: 'Loan Offer',
-      amount: 'ZAR1,000.00',
-      term: 'Listing',
-      createdDate: 'Oct 24, 2025',
-      interestRate: '18%',
-      status: 'New listing',
-      durationWindow: '6 - 12 months',
-      minCreditScore: 'Not specified',
-      minMonthlyIncome: 'Not specified',
-      borrowerRequests: [],
-    },
-  ]);
+  async refreshLender() {
+    const userId = this.auth.userId();
+    if (!userId) return;
+    await this.loadLenderData(userId, { force: true });
+  }
 
-  private readonly lenderActiveLoans = signal<LenderLoan[]>([
-    {
-      id: 'active-1',
-      name: 'Loan Investments Pty',
-      borrower: 'To Nthabiseng Malepe',
-      amount: 'R 500 000',
-      term: '48 month repayments',
-      startDate: '01/02/2023',
-      interestRate: '13.5%',
-      accruedInterest: 'R 45 500',
-    },
-    {
-      id: 'active-2',
-      name: 'MicroFinance Inc.',
-      borrower: 'To Regina Mahlangu',
-      amount: 'R 60 000',
-      term: '12 month repayments',
-      startDate: '01/12/2023',
-      interestRate: '12%',
-      accruedInterest: 'R 7 200',
-    },
-  ]);
+  isBorrowerLoading() {
+    return this.borrowerLoading();
+  }
 
-  private readonly lenderHistoryLoans = signal<LenderLoan[]>([
-    {
-      id: 'history-1',
-      name: 'BizStart SME',
-      borrower: 'To Vusi Dlamini',
-      amount: 'R 150 000',
-      term: '18 months',
-      startDate: '01/06/2022',
-      interestRate: '11.5%',
-      accruedInterest: 'R 18 400',
-      status: 'Settled 04/12/2023',
-    },
-    {
-      id: 'history-2',
-      name: 'Harvest Co-op',
-      borrower: 'To Naledi Radebe',
-      amount: 'R 95 000',
-      term: '24 months',
-      startDate: '01/04/2021',
-      interestRate: '10.2%',
-      accruedInterest: 'R 11 200',
-      status: 'Settled 01/05/2023',
-    },
-  ]);
+  borrowerErrorMessage() {
+    return this.borrowerError();
+  }
 
-  readonly activeMode = signal<'lender' | 'borrower'>('lender');
-  readonly activeLenderTab = signal<LenderTabId>('active');
+  async refreshBorrower() {
+    const userId = this.auth.userId();
+    if (!userId) return;
+    await this.loadBorrowerData(userId, { force: true });
+  }
 
-  readonly lenderOverview = signal<LenderOverviewItem[]>(this.lenderOverviewData);
-  readonly lenderTabs = computed<LenderTab[]>(() => [
-    {
-      id: 'marketplace',
-      label: this.lenderTabMeta.marketplace.label,
-      description: this.lenderTabMeta.marketplace.description,
-      loans: this.lenderMarketplaceLoans(),
-    },
-    {
-      id: 'active',
-      label: this.lenderTabMeta.active.label,
-      description: this.lenderTabMeta.active.description,
-      loans: this.lenderActiveLoans(),
-    },
-    {
-      id: 'history',
-      label: this.lenderTabMeta.history.label,
-      description: this.lenderTabMeta.history.description,
-      loans: this.lenderHistoryLoans(),
-    },
-  ]);
+  goToBorrow() {
+    this.router.navigate(['/borrow']);
+  }
 
-  readonly currentLenderTab = computed<LenderTab | undefined>(() =>
-    this.lenderTabs().find((tab) => tab.id === this.activeLenderTab())
-  );
-
-  readonly declineReasons: string[] = [
-    'Credit score is below requirement',
-    'Monthly income is below requirement',
-    'Unable to verify supporting documents',
-    'Requested amount exceeds risk threshold',
-    'Other',
-  ];
-
-  readonly pendingWithdrawLoanId = signal<string | null>(null);
-  readonly pendingDeclineRequest = signal<{ loanId: string; requestId: string } | null>(null);
-  readonly selectedDeclineReason = signal<string | null>(null);
+  goToLend() {
+    this.router.navigate(['/lend']);
+  }
 
   openAddFunds() {
     this.dialog.open(WalletAddFundsDialog, {
@@ -388,170 +378,282 @@ export class Dashboard {
       panelClass: 'wallet-dialog-panel',
       disableClose: true,
       data: {
-        balance: this.wallet.available(),
-        banks: this.wallet.banks(),
-        summary: this.wallet.summary(),
+        balance: this.walletService.available(),
+        banks: this.walletService.banks(),
+        summary: this.walletService.summary(),
       },
     });
   }
 
   openWithdrawFunds() {
-    this.dialog.open(WalletWithdrawDialog, {
-      width: '560px',
-      panelClass: 'wallet-dialog-panel',
-      disableClose: true,
-      data: {
-        balance: this.wallet.summary(),
-        profile: this.wallet.withdrawProfile(),
-      },
-    });
+    this.dialog
+      .open(WalletWithdrawDialog, {
+        width: '560px',
+        panelClass: 'wallet-dialog-panel',
+        disableClose: true,
+        data: {
+          balance: this.walletService.summary(),
+          profile: this.walletService.withdrawProfile(),
+        },
+      })
+      .afterClosed()
+      .subscribe(result => {
+        if (!result || typeof result.amount !== 'number') return;
+        this.walletService.withdraw(result.amount, result.reference).then(ok => {
+          if (!ok) {
+            console.warn('Unable to withdraw funds: insufficient available balance.');
+          }
+        });
+      });
   }
 
-  switchMode(mode: 'borrower' | 'lender') {
-    this.activeMode.set(mode);
-  }
-
-  setLenderTab(tab: LenderTabId) {
-    this.activeLenderTab.set(tab);
-  }
-
-  openWithdrawModal(id: string) {
-    this.pendingWithdrawLoanId.set(id);
-  }
-
-  closeWithdrawModal() {
-    this.pendingWithdrawLoanId.set(null);
-  }
-
-  confirmWithdrawListing() {
-    const loanId = this.pendingWithdrawLoanId();
-    if (!loanId) return;
-    this.withdrawListing(loanId);
-    this.pendingWithdrawLoanId.set(null);
-  }
-
-  openDeclineModal(loanId: string, requestId: string) {
-    this.pendingDeclineRequest.set({ loanId, requestId });
-    this.selectedDeclineReason.set(null);
-  }
-
-  closeDeclineModal() {
-    this.pendingDeclineRequest.set(null);
-    this.selectedDeclineReason.set(null);
-  }
-
-  selectDeclineReason(reason: string) {
-    this.selectedDeclineReason.set(reason);
-  }
-
-  confirmDeclineRequest() {
-    const context = this.pendingDeclineRequest();
-    const reason = this.selectedDeclineReason();
-
-    if (!context || !reason) {
+  private async loadBorrowerData(userId: string, options?: { force?: boolean }) {
+    if (this.borrowerLoading()) {
       return;
     }
-
-    this.lenderMarketplaceLoans.update(loans =>
-      loans.map(loan => {
-        if (loan.id !== context.loanId) {
-          return loan;
-        }
-
-        const borrowerRequests = loan.borrowerRequests?.map((request): BorrowerRequest => {
-          if (request.id !== context.requestId) {
-            return request;
-          }
-          return {
-            ...request,
-            status: 'Declined',
-            declineReason: reason,
-          };
-        });
-
-        return {
-          ...loan,
-          borrowerRequests,
-        };
-      })
-    );
-
-    this.closeDeclineModal();
+    if (!options?.force && this.borrowerDashboard()) {
+      return;
+    }
+    this.borrowerLoading.set(true);
+    this.borrowerError.set(null);
+    try {
+      const data = await this.dashboardService.loadBorrowerDashboard(userId);
+      this.borrowerDashboard.set(data);
+      this.borrowerLastSynced.set(new Date());
+    } catch (error) {
+      console.error('Unable to refresh borrower data', error);
+      this.borrowerError.set('Unable to load borrower dashboard. Please try again shortly.');
+    } finally {
+      this.borrowerLoading.set(false);
+    }
   }
 
-  approveRequest(loanId: string, requestId: string) {
-    this.lenderMarketplaceLoans.update(loans =>
-      loans.map(loan => {
-        if (loan.id !== loanId) {
-          return loan;
-        }
-        const borrowerRequests = loan.borrowerRequests?.map((request): BorrowerRequest => {
-          if (request.id !== requestId) {
-            return request;
-          }
-          return {
-            ...request,
-            status: 'Approved',
-            declineReason: undefined,
-          };
-        });
-        return {
-          ...loan,
-          borrowerRequests,
-        };
-      })
-    );
+  private async loadLenderData(userId: string, options?: { force?: boolean }) {
+    if (this.lenderLoading()) {
+      return;
+    }
+    if (!options?.force && this.lenderDashboard()) {
+      return;
+    }
+    this.lenderLoading.set(true);
+    this.lenderError.set(null);
+    try {
+      const [data] = await Promise.all([
+        this.dashboardService.loadLenderDashboard(userId),
+        this.walletService.refresh(),
+      ]);
+      this.lenderDashboard.set(data);
+      this.lenderLastSynced.set(new Date());
+    } catch (error) {
+      console.error('Unable to refresh lender data', error);
+      this.lenderError.set('Unable to load lender dashboard. Please try again shortly.');
+    } finally {
+      this.lenderLoading.set(false);
+    }
   }
 
-  viewBorrowerProfile(loanId: string, requestId: string) {
-    console.info(`Viewing profile for request ${requestId} on loan ${loanId}`);
+  private resetBorrowerState() {
+    this.borrowerDashboard.set(null);
+    this.borrowerLoadedFor.set(null);
+    this.borrowerError.set(null);
   }
 
-  pendingRequestsCount(loan: LenderLoan) {
-    return loan.borrowerRequests?.reduce((count, request) => {
-      return request.status === 'Pending' ? count + 1 : count;
-    }, 0) ?? 0;
+  private resetLenderState() {
+    this.lenderDashboard.set(null);
+    this.lenderLoadedFor.set(null);
+    this.lenderError.set(null);
   }
 
-  async withdrawListing(id: string) {
-    let withdrawn: LenderLoan | undefined;
-    this.lenderMarketplaceLoans.update(loans => {
-      const remaining: LenderLoan[] = [];
-      for (const loan of loans) {
-        if (loan.id === id) {
-          withdrawn = loan;
-        } else {
-          remaining.push(loan);
-        }
-      }
-      return remaining;
-    });
-
-    if (!withdrawn) return;
-
-    const historyLoan: LenderLoan = {
-      ...withdrawn,
-      id:
-        `history-${
-          globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2, 10)
-        }`,
-      borrower: withdrawn.borrower,
-      startDate:
-        withdrawn.startDate ??
-        (withdrawn.createdDate ? `Listed • ${withdrawn.createdDate}` : 'Listing date • —'),
-      accruedInterest: undefined,
-      status: 'Withdrawn from listing',
+  private toMarketplaceCard(loan: LenderMarketplaceLoan): MarketplaceCard {
+    const badge =
+      loan.tags?.[0] ??
+      (loan.status && loan.status.toLowerCase().includes('new') ? 'New listing' : undefined);
+    return {
+      id: loan.id,
+      title: loan.name,
+      amount: loan.amount !== undefined ? this.formatCurrency(loan.amount) : undefined,
+      rate: loan.interestRate !== undefined ? `${loan.interestRate.toFixed(1)}%` : undefined,
+      duration: loan.durationLabel ?? this.describeDuration(loan.minDurationMonths, loan.maxDurationMonths),
+      minCreditScore: loan.minCreditScore !== undefined ? `${loan.minCreditScore}` : undefined,
+      minMonthlyIncome:
+        loan.minMonthlyIncome !== undefined ? this.formatCurrency(loan.minMonthlyIncome) : undefined,
+      status: loan.status,
+      created: loan.createdAt,
+      badge,
+      requests: (loan.borrowerRequests ?? []).map(request => this.toMarketplaceRequestCard(request)),
     };
+  }
 
-    this.lenderHistoryLoans.update(loans => [historyLoan, ...loans]);
-    const numericAmount = typeof withdrawn.amount === 'number'
-      ? withdrawn.amount
-      : Number(String(withdrawn.amount).replace(/[^0-9.]/g, ''));
-    if (!Number.isNaN(numericAmount)) {
-      await this.wallet.release(numericAmount);
+  private toMarketplaceRequestCard(request: LenderBorrowerRequest): MarketplaceRequestCard {
+    return {
+      id: request.id,
+      borrower: request.borrowerName,
+      submitted: request.submittedAt,
+      creditScore: request.creditScore !== undefined ? `${request.creditScore}` : undefined,
+      monthlyIncome:
+        request.monthlyIncome !== undefined ? this.formatCurrency(request.monthlyIncome) : undefined,
+      credibility: request.credibility,
+      status: request.status,
+      note: request.note,
+    };
+  }
+
+  private toPortfolioCard(loan: LenderPortfolioLoan): PortfolioCard {
+    return {
+      id: loan.id,
+      title: loan.name,
+      borrower: loan.borrowerName,
+      principal: loan.principal !== undefined ? this.formatCurrency(loan.principal) : undefined,
+      interestRate: loan.interestRate !== undefined ? `${loan.interestRate.toFixed(1)}%` : undefined,
+      term: loan.termLabel ?? (loan.termMonths ? `${loan.termMonths} month term` : undefined),
+      startDate: loan.startDate,
+      accruedInterest:
+        loan.accruedInterest !== undefined ? this.formatCurrency(loan.accruedInterest) : undefined,
+      status: loan.status,
+      completed: loan.completedAt,
+    };
+  }
+
+  private toBorrowerCard(loan: BorrowerLoan, tab: BorrowerTabId): BorrowerLoanCard {
+    const meta: Array<{ label: string; value: string }> = [];
+
+    if (loan.termMonths) {
+      meta.push({ label: 'Term', value: `${loan.termMonths} month term` });
     }
-    if (this.activeLenderTab() === 'marketplace' && this.lenderMarketplaceLoans().length === 0) {
-      this.activeLenderTab.set('history');
+
+    const startDate =
+      tab === 'pending'
+        ? loan.appliedDate ?? loan.startDate
+        : loan.startDate ?? loan.appliedDate;
+    if (startDate) {
+      const formattedStart = this.formatDate(startDate, 'full');
+      if (formattedStart) {
+        const prefix =
+          tab === 'pending' || loan.statusTone === 'rejected' ? 'Application date' : 'Start date';
+        meta.push({ label: 'Start date', value: `${prefix} • ${formattedStart}` });
+      }
     }
+
+    if (loan.interestRate !== undefined) {
+      const prefix =
+        tab === 'pending'
+          ? 'Proposed rate'
+          : tab === 'history' && loan.statusTone === 'rejected'
+            ? 'Offered rate'
+            : 'Interest rate';
+      meta.push({
+        label: 'Interest rate',
+        value: `${prefix} • ${loan.interestRate.toFixed(1)}%`,
+      });
+    }
+
+    if (tab === 'active' && loan.nextPaymentAmount !== undefined) {
+      const dueDate = loan.nextPaymentDate ? this.formatDate(loan.nextPaymentDate, 'short') : '';
+      const due = dueDate ? ` due ${dueDate}` : '';
+      meta.push({
+        label: 'Next payment',
+        value: `${this.formatCurrency(loan.nextPaymentAmount)}${due}`,
+      });
+    }
+
+    if (tab === 'active' && loan.interestPaid !== undefined) {
+      meta.push({
+        label: 'Interest paid',
+        value: `Interest paid • ${this.formatCurrency(loan.interestPaid)}`,
+      });
+    }
+
+    if (tab === 'history') {
+      const totalPaid = loan.totalPaid ?? loan.interestPaid;
+      if (totalPaid !== undefined) {
+        const prefix = loan.statusTone === 'rejected' ? 'Total requested' : 'Total paid';
+        meta.push({
+          label: 'Total paid',
+          value: `${prefix} • ${this.formatCurrency(totalPaid)}`,
+        });
+      }
+    }
+
+    return {
+      id: loan.id,
+      name: loan.name,
+      lender: loan.lenderName,
+      amountBadge: this.borrowerAmountBadge(loan, tab),
+      meta,
+      status: loan.status ?? undefined,
+      tone: (loan.statusTone as BorrowerLoanCard['tone']) ?? undefined,
+      note: loan.statusReason ? `Reason: ${loan.statusReason}` : undefined,
+    };
+  }
+
+  private describeDuration(min?: number, max?: number) {
+    if (min && max && min !== max) {
+      return `${min}-${max} month term`;
+    }
+    if (min) {
+      return `${min} month term`;
+    }
+    if (max) {
+      return `${max} month term`;
+    }
+    return undefined;
+  }
+
+  private borrowerAmountBadge(loan: BorrowerLoan, tab: BorrowerTabId): string | undefined {
+    if (tab === 'pending') {
+      const borrowed = loan.amountBorrowed ?? loan.principal;
+      return borrowed !== undefined ? `Borrowed • ${this.formatCurrency(borrowed)}` : undefined;
+    }
+    if (tab === 'active') {
+      if (loan.amountRemaining !== undefined) {
+        return `${this.formatCurrency(loan.amountRemaining)} remaining`;
+      }
+      if (loan.principal !== undefined) {
+        return `${this.formatCurrency(loan.principal)} principal`;
+      }
+      return undefined;
+    }
+    // history
+    if (loan.completedAt) {
+      const settled = this.formatDate(loan.completedAt, 'short');
+      return settled ? `Settled • ${settled}` : 'Settled';
+    }
+    if (loan.status && loan.status.toLowerCase().includes('application')) {
+      return loan.status;
+    }
+    if (loan.status && loan.status.toLowerCase().includes('closed')) {
+      return loan.status;
+    }
+    return loan.status ?? undefined;
+  }
+
+  private formatDate(value?: string, mode: 'short' | 'full' = 'full'): string {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const options: Intl.DateTimeFormatOptions =
+      mode === 'short'
+        ? { day: '2-digit', month: 'short' }
+        : { day: '2-digit', month: '2-digit', year: 'numeric' };
+    return new Intl.DateTimeFormat('en-GB', options).format(date);
+  }
+
+  private formatCurrency(value: number, options?: { showPlus?: boolean }) {
+    const prefix = options?.showPlus && value > 0 ? '+ ' : '';
+    const formatted = new Intl.NumberFormat('en-ZA', {
+      style: 'currency',
+      currency: 'ZAR',
+      maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+    }).format(value);
+    return `${prefix}${formatted}`;
+  }
+
+  private formatPercent(value: number, options?: { showPlus?: boolean }) {
+    if (!Number.isFinite(value)) {
+      return options?.showPlus ? '+ 0%' : '0%';
+    }
+    const prefix = options?.showPlus && value > 0 ? '+ ' : '';
+    const percentValue = value > 1 ? value : value * 100;
+    return `${prefix}${percentValue.toFixed(1)}%`;
   }
 }
