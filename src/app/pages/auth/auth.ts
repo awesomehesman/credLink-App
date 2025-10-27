@@ -16,12 +16,18 @@ export class Auth {
   private isSignInSig = signal(true);
   isSignIn = () => this.isSignInSig();
 
+  private signInErrorSig = signal<string | null>(null);
+  signInError = () => this.signInErrorSig();
+
+  private signUpErrorSig = signal<string | null>(null);
+  signUpError = () => this.signUpErrorSig();
+
   signInForm!: FormGroup;
   signUpForm!: FormGroup;
 
   constructor(private fb: FormBuilder, private router: Router, private auth: AuthService) {
     this.signInForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
+      email: ['', Validators.required],
       password: ['', Validators.required],
     });
 
@@ -32,7 +38,7 @@ export class Auth {
     });
 
     this.signInForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
-      if (this.signInForm.hasError('invalid')) this.signInForm.setErrors(null);
+      if (this.signInErrorSig()) this.signInErrorSig.set(null);
     });
 
     const usernameCtrl = this.signUpForm.get('username');
@@ -44,10 +50,16 @@ export class Auth {
         }
       });
     }
+
+    this.signUpForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      if (this.signUpErrorSig()) this.signUpErrorSig.set(null);
+    });
   }
 
   swap(toSignIn: boolean) {
     this.isSignInSig.set(toSignIn);
+    this.signInErrorSig.set(null);
+    this.signUpErrorSig.set(null);
   }
 
   async submitSignIn() {
@@ -55,11 +67,13 @@ export class Auth {
       this.signInForm.markAllAsTouched();
       return;
     }
-    const success = await this.auth.signIn(this.signInForm.value);
-    if (!success) {
-      this.signInForm.setErrors({ invalid: true });
+    const result = await this.auth.signIn(this.signInForm.value);
+    if (!result.ok) {
+      this.signInErrorSig.set(result.message ?? 'Incorrect username or password');
+      this.signInForm.markAllAsTouched();
       return;
     }
+    this.signInErrorSig.set(null);
     this.signInForm.reset();
     const target = this.auth.isApproved() ? '/dashboard' : '/onboarding/personal';
     this.router.navigateByUrl(target);
@@ -73,16 +87,20 @@ export class Auth {
       return;
     }
 
-    const success = await this.auth.signUp({ username, password });
-    if (!success) {
+    const result = await this.auth.signUp({ username, password });
+    if (!result.ok) {
+      this.signUpErrorSig.set(result.message ?? 'Unable to create account');
       const usernameCtrl = this.signUpForm.get('username');
-      if (usernameCtrl) {
+      const loweredMessage = (result.message ?? '').toLowerCase();
+      if (usernameCtrl && (loweredMessage.includes('exist') || loweredMessage.includes('taken'))) {
         const existing = usernameCtrl.errors ?? {};
         usernameCtrl.setErrors({ ...existing, taken: true });
+        usernameCtrl.markAsTouched();
       }
       this.signUpForm.markAllAsTouched();
       return;
     }
+    this.signUpErrorSig.set(null);
     this.signUpForm.reset();
     this.isSignInSig.set(true);
     this.router.navigateByUrl('/onboarding/personal');

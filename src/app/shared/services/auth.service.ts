@@ -12,6 +12,11 @@ export interface Credentials {
   name?: string;
 }
 
+export interface AuthResult {
+  ok: boolean;
+  message?: string;
+}
+
 interface AuthResponse {
   token: string;
   expires: string;
@@ -97,6 +102,36 @@ export class AuthService {
     return ['approved', 'verified', 'active'].includes(normalized);
   }
 
+  private extractErrorMessage(error: unknown, fallback: string) {
+    if (!error) return fallback;
+    const err = error as any;
+    const candidates = [
+      err?.error?.message,
+      err?.error?.error,
+      err?.error?.detail,
+      err?.message,
+      err?.statusText,
+    ];
+    const message = candidates.find((value) => typeof value === 'string' && value.trim());
+    if (message) return (message as string).trim();
+
+    if (err?.error && typeof err.error === 'object') {
+      try {
+        for (const value of Object.values(err.error)) {
+          if (typeof value === 'string' && value.trim()) return value.trim();
+          if (Array.isArray(value)) {
+            const nested = value.find((entry) => typeof entry === 'string' && entry.trim());
+            if (typeof nested === 'string') return nested.trim();
+          }
+        }
+      } catch {
+        // ignore object parsing errors
+      }
+    }
+
+    return fallback;
+  }
+
   token() {
     return this._token();
   }
@@ -117,27 +152,32 @@ export class AuthService {
     return this._userId();
   }
 
-  async signIn(creds: Credentials) {
+  async signIn(creds: Credentials): Promise<AuthResult> {
     const email = (creds.email ?? creds.username)?.toString().trim().toLowerCase();
     const password = creds.password?.toString().trim();
-    if (!email || !password) return false;
+    if (!email || !password) {
+      return { ok: false, message: 'Username and password are required' };
+    }
     const payload = { username: email, password };
     try {
       const response = await firstValueFrom(
         this.http.post<AuthResponse>(`${this.baseUrl}/api/auth/login`, payload)
       );
       this.applySession(response);
-      return true;
+      return { ok: true };
     } catch (error) {
       console.error('Login failed', error);
-      return false;
+      const message = this.extractErrorMessage(error, 'Incorrect username or password');
+      return { ok: false, message };
     }
   }
 
-  async signUp(creds: Credentials) {
+  async signUp(creds: Credentials): Promise<AuthResult> {
     const identifier = (creds.email ?? creds.username)?.toString().trim().toLowerCase();
     const password = creds.password?.toString().trim();
-    if (!identifier || !password) return false;
+    if (!identifier || !password) {
+      return { ok: false, message: 'Username and password are required' };
+    }
     const payload = {
       email: identifier,
       username: (creds.username ?? creds.email ?? identifier)?.toString().trim().toLowerCase(),
@@ -149,18 +189,21 @@ export class AuthService {
         this.http.post<AuthResponse>(`${this.baseUrl}/api/auth/register`, payload)
       );
       this.applySession(response);
-      return true;
+      return { ok: true };
     } catch (error) {
       console.error('Registration failed', error);
-      return false;
+      const message = this.extractErrorMessage(error, 'Unable to complete registration');
+      return { ok: false, message };
     }
   }
 
-  async registerLocally(data: any) {
+  async registerLocally(data: any): Promise<AuthResult> {
     const username = (data?.email ?? data?.username ?? '').toString().trim().toLowerCase();
     const password = data?.password?.toString().trim();
     const name = `${data?.firstName ?? ''} ${data?.lastName ?? ''}`.trim() || username;
-    if (!username || !password) return false;
+    if (!username || !password) {
+      return { ok: false, message: 'Email and password are required' };
+    }
     return this.signUp({ email: username, username, password, name });
   }
 

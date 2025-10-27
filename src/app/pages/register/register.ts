@@ -18,6 +18,7 @@ import { AuthService } from '../../shared/services/auth.service';
 })
 export class Register {
   form: any;
+  submitError: string | null = null;
 
   constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {
     this.form = this.fb.group({
@@ -49,14 +50,23 @@ export class Register {
 
   async submit(){
     if (this.form.invalid || this.form.value.password !== this.form.value.confirmPassword) {
-      this.form.markAllAsTouched(); return;
+      if (this.form.value.password !== this.form.value.confirmPassword) {
+        this.form.get('confirmPassword')?.setErrors({ mismatch: true });
+      }
+      this.submitError = null;
+      this.form.markAllAsTouched();
+      return;
     }
-    const success = await this.auth.registerLocally(this.form.value);
-    if (!success) {
+    this.submitError = null;
+    const result = await this.auth.registerLocally(this.form.value);
+    if (!result.ok) {
+      this.submitError = result.message ?? 'Unable to complete registration';
       const emailCtrl = this.form.get('email');
-      if (emailCtrl) {
+      const loweredMessage = (this.submitError ?? '').toLowerCase();
+      if (emailCtrl && (loweredMessage.includes('exist') || loweredMessage.includes('taken'))) {
         const existing = emailCtrl.errors ?? {};
         emailCtrl.setErrors({ ...existing, taken: true });
+        emailCtrl.markAsTouched();
       }
       this.form.markAllAsTouched();
       return;
