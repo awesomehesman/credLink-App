@@ -1,11 +1,11 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px
+  gap: 12px;
 }
 
 .full {
-  grid-column: 1/-1
+  grid-column: 1 / -1;
 }
 
 .actions {
@@ -138,4 +138,41 @@
   color: #0F6B67;      /* match brand teal */
   font-weight: 700;
   font-size: 22px;
+}
+
+.section-heading {
+  grid-column: 1 / -1;
+  text-align: center;
+  margin: 20px 0 12px;
+  color: #0F6B67;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.income-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.income-row > .placeholder {
+  min-height: 0;
+}
+
+.income-row mat-form-field {
+  width: 100%;
+}
+
+@media (max-width: 960px) {
+  .income-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .income-row {
+    grid-template-columns: 1fr;
+  }
 }

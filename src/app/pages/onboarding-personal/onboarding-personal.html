@@ -22,19 +22,62 @@
       <mat-form-field appearance="outline"><mat-label>Last name</mat-label><input matInput formControlName="lastName"></mat-form-field>
       <mat-form-field appearance="outline"><mat-label>Email</mat-label><input matInput type="email" formControlName="email"></mat-form-field>
       <mat-form-field appearance="outline"><mat-label>Phone</mat-label><input matInput formControlName="phone"></mat-form-field>
+      
+      <mat-form-field appearance="outline">
+        <mat-label>Identification Type</mat-label>
+        <mat-select formControlName="identificationType">
+          <mat-option value="sa-id">South African ID</mat-option>
+          <mat-option value="passport">Passport</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>National ID / Passport</mat-label>
+        <input
+          matInput
+          formControlName="nationalIdOrPassport"
+          [attr.maxlength]="isSouthAfricanId() ? 13 : 30"
+          [attr.inputmode]="isSouthAfricanId() ? 'numeric' : 'text'"
+          [attr.pattern]="isSouthAfricanId() ? '\\d*' : undefined"
+        >
+        @if (isSouthAfricanId()) {
+          <mat-hint align="end">{{ form.controls['nationalIdOrPassport'].value?.length || 0 }}/13</mat-hint>
+        }
+      </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Date of birth</mat-label>
         <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" readonly>
         <mat-datepicker-toggle matSuffix [for]="dobPicker"></mat-datepicker-toggle>
         <mat-datepicker #dobPicker></mat-datepicker>
-      </mat-form-field>      
-      <mat-form-field appearance="outline"><mat-label>National ID / Passport</mat-label><input matInput formControlName="nationalIdOrPassport"></mat-form-field>
+      </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>ID/Passport expiry (optional)</mat-label>
         <input matInput [matDatepicker]="expPicker" formControlName="idExpiry" readonly>
         <mat-datepicker-toggle matSuffix [for]="expPicker"></mat-datepicker-toggle>
         <mat-datepicker #expPicker></mat-datepicker>
       </mat-form-field>
+      <h2 class="section-heading">Income information</h2>
+      <!-- <div class="income-row"> -->
+        <mat-form-field appearance="outline"><mat-label>Company/Business Name</mat-label><input matInput formControlName="companyName"></mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Employment Status</mat-label>
+          <mat-select formControlName="employmentStatus" (selectionChange)="onEmploymentChange($event.value)">
+            <mat-option value="Full-time">Full-time</mat-option>
+            <mat-option value="Part-time">Part-time</mat-option>
+            <mat-option value="Contract">Contract</mat-option>
+            <mat-option value="Free-lance">Free-lance</mat-option>
+            <mat-option value="Self-employed">Self-employed</mat-option>
+            <mat-option value="Other">Other</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <!-- @if (showOtherEmployment()) {
+          <mat-form-field appearance="outline"><mat-label>Employment Status Details</mat-label><input matInput formControlName="employmentStatusOther"></mat-form-field>
+        } @else {
+          <div class="placeholder"></div>
+        } -->
+        <mat-form-field appearance="outline"><mat-label>Monthly Income</mat-label><input matInput type="number" min="0" formControlName="monthlyIncome" inputmode="decimal"></mat-form-field>
+      <!-- </div> -->
+
+      <h2 class="section-heading">Residential address</h2>
       <mat-form-field appearance="outline" class="full"><mat-label>Street</mat-label><input matInput formControlName="street"></mat-form-field>
       <mat-form-field appearance="outline"><mat-label>City</mat-label><input matInput formControlName="city"></mat-form-field>
       <mat-form-field appearance="outline">

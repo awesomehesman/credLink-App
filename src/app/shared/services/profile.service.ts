@@ -13,6 +13,10 @@ export interface PersonalInfoPayload {
   idKind?: string;
   governmentId?: string;
   idExpiry?: string | null;
+  identificationType?: 'sa-id' | 'passport';
+  employmentStatus?: string;
+  employmentStatusOther?: string | null;
+  monthlyIncome?: number | null;
   address?: {
     street?: string;
     city?: string;
@@ -37,6 +41,11 @@ interface ApiUserResponse {
   idKind?: string;
   governmentId?: string;
   idExpiry?: string;
+  identificationType?: 'sa-id' | 'passport' | string;
+  employmentStatus?: string;
+  employmentStatusOther?: string;
+  monthlyIncome?: number | null;
+  businessName?: string | null;
   address?: {
     street?: string;
     city?: string;
@@ -86,8 +95,16 @@ export class ProfileService {
     const email = this.asString(formValue['email'])?.toLowerCase();
     const phoneNumber = this.asString(formValue['phone']);
     const dateOfBirth = this.toIsoDate(formValue['dateOfBirth']);
+    const identificationType = this.asString(formValue['identificationType']) as
+      | 'sa-id'
+      | 'passport'
+      | undefined;
     const governmentId = this.asString(formValue['nationalIdOrPassport']);
     const idExpiry = this.toIsoDateOrNull(formValue['idExpiry']);
+    const companyName = this.asString(formValue['companyName']);
+    const employmentStatus = this.asString(formValue['employmentStatus']);
+    const employmentStatusOther = this.asString(formValue['employmentStatusOther']);
+    const monthlyIncome = this.toNumber(formValue['monthlyIncome']);
     const street = this.asString(formValue['street']);
     const city = this.asString(formValue['city']);
     const province = this.asString(formValue['province']);
@@ -101,9 +118,20 @@ export class ProfileService {
       email: email ?? undefined,
       phoneNumber,
       dateOfBirth,
-      idKind: governmentId ? 'NationalID' : undefined,
+      idKind:
+        identificationType === 'sa-id'
+          ? 'NationalID'
+          : identificationType === 'passport'
+            ? 'Passport'
+            : governmentId
+              ? 'NationalID'
+              : undefined,
+      identificationType,
       governmentId,
       idExpiry,
+      employmentStatus,
+      employmentStatusOther: employmentStatus === 'Other' ? employmentStatusOther ?? null : null,
+      monthlyIncome: monthlyIncome ?? null,
       address: {
         street,
         city,
@@ -114,7 +142,7 @@ export class ProfileService {
       autoReply: false,
       preferencesJson: null,
       lenderDisplayName: [firstName, lastName].filter(Boolean).join(' ') || undefined,
-      businessName: null,
+      businessName: companyName ?? null,
       riskAppetite: null,
     };
 
@@ -139,6 +167,12 @@ export class ProfileService {
     if (value === null || value === undefined) return undefined;
     const trimmed = String(value).trim();
     return trimmed.length ? trimmed : undefined;
+  }
+
+  private toNumber(value: unknown): number | undefined {
+    if (value === null || value === undefined || value === '') return undefined;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : undefined;
   }
 
   private compactObject<T>(value: T): T {

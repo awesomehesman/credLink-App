@@ -52,14 +52,21 @@ export class OnboardingPersonal implements OnInit {
       email: ['', [Validators.required, Validators.email]],
       phone: ['', [Validators.required]],
       dateOfBirth: [null, [Validators.required]],
-      nationalIdOrPassport: ['', [Validators.required, Validators.minLength(6)]],
+      identificationType: ['sa-id', [Validators.required]],
+      nationalIdOrPassport: ['', [Validators.required]],
       idExpiry: [null, []],
+      companyName: ['', []],
+      employmentStatus: ['Full-time', [Validators.required]],
+      employmentStatusOther: ['Other'],
+      monthlyIncome: [null, [Validators.required, Validators.min(0)]],
       street: ['', [Validators.required]],
       city: ['', [Validators.required]],
       province: ['', [Validators.required]],
       postalCode: ['', [Validators.required]],
       country: ['South Africa', [Validators.required]]
     });
+    this.setupIdentificationValidation();
+    this.setupEmploymentValidation();
     void this.prefill();
   }
 
@@ -71,7 +78,15 @@ export class OnboardingPersonal implements OnInit {
     this.saving = true;
     this.submitError = null;
     try {
-      await this.profile.savePersonalInfo(this.form.value);
+      const rawIncome = this.form.value.monthlyIncome;
+      const parsedIncome =
+        rawIncome !== null && rawIncome !== '' ? Number(rawIncome) : null;
+      const payload = {
+        ...this.form.value,
+        monthlyIncome:
+          parsedIncome !== null && Number.isFinite(parsedIncome) ? parsedIncome : null,
+      };
+      await this.profile.savePersonalInfo(payload);
       this.router.navigateByUrl('/onboarding/kyc');
     } catch {
       this.submitError = 'Unable to save your details. Please try again.';
@@ -92,8 +107,19 @@ export class OnboardingPersonal implements OnInit {
         email: profile.email ?? '',
         phone: profile.phoneNumber ?? '',
         dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth) : null,
+        identificationType:
+          profile.identificationType === 'passport' || profile.idKind === 'Passport'
+            ? 'passport'
+            : 'sa-id',
         nationalIdOrPassport: profile.governmentId ?? '',
         idExpiry: profile.idExpiry ? new Date(profile.idExpiry) : null,
+        companyName: profile.businessName ?? '',
+        employmentStatus: profile.employmentStatus ?? this.form.get('employmentStatus')?.value ?? 'Full-time',
+        employmentStatusOther: profile.employmentStatusOther ?? '',
+        monthlyIncome:
+          profile.monthlyIncome !== undefined && profile.monthlyIncome !== null
+            ? Number(profile.monthlyIncome)
+            : null,
         street: profile.address?.street ?? '',
         city: profile.address?.city ?? '',
         province: profile.address?.province ?? '',
@@ -103,5 +129,60 @@ export class OnboardingPersonal implements OnInit {
     } catch {
       this.loadError = 'We could not load your existing profile. You can still continue.';
     }
+  }
+
+  isSouthAfricanId() {
+    return this.form?.get('identificationType')?.value === 'sa-id';
+  }
+
+  showOtherEmployment() {
+    return this.form?.get('employmentStatus')?.value === 'Other';
+  }
+
+  onEmploymentChange(value: string) {
+    const otherControl = this.form.get('employmentStatusOther');
+    if (!otherControl) return;
+    if (value === 'Other') {
+      otherControl.setValidators([Validators.required, Validators.minLength(3)]);
+    } else {
+      otherControl.clearValidators();
+      otherControl.setValue('', { emitEvent: false });
+    }
+    otherControl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private setupIdentificationValidation() {
+    const idTypeControl = this.form.get('identificationType');
+    const docControl = this.form.get('nationalIdOrPassport');
+    if (!idTypeControl || !docControl) return;
+
+    idTypeControl.valueChanges.subscribe(type => {
+      this.applyIdentificationValidators(type);
+    });
+    this.applyIdentificationValidators(idTypeControl.value);
+  }
+
+  private setupEmploymentValidation() {
+    const employmentControl = this.form.get('employmentStatus');
+    if (!employmentControl) return;
+    employmentControl.valueChanges.subscribe(value => this.onEmploymentChange(value));
+    this.onEmploymentChange(employmentControl.value);
+  }
+
+  private applyIdentificationValidators(type: string) {
+    const docControl = this.form.get('nationalIdOrPassport');
+    if (!docControl) return;
+    if (type === 'sa-id') {
+      docControl.setValidators([
+        Validators.required,
+        Validators.pattern(/^\d{13}$/),
+      ]);
+    } else {
+      docControl.setValidators([
+        Validators.required,
+        Validators.pattern(/^[A-Za-z0-9]{6,30}$/),
+      ]);
+    }
+    docControl.updateValueAndValidity({ emitEvent: false });
   }
 }
