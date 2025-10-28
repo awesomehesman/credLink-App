@@ -26,10 +26,10 @@ import { WalletAddFundsDialog } from '../../shared/components/header/wallet-add-
     MatIconModule,
     NgIf,
     CurrencyPipe,
-    DatePipe
+    DatePipe,
   ],
   templateUrl: './lend.html',
-  styleUrl: './lend.scss'
+  styleUrl: './lend.scss',
 })
 export class Lend implements OnInit {
   form!: FormGroup;
@@ -58,10 +58,10 @@ export class Lend implements OnInit {
     return +(available - (isNaN(amount) ? 0 : amount)).toFixed(2);
   });
 
-  readonly offers = computed(() =>
-    this.loans.myOffers(this.auth.userId() || 'anon')
+  readonly offers = computed(() => this.loans.myOffers(this.auth.userId() || 'anon'));
+  readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.offers().length / this.pageSize))
   );
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.offers().length / this.pageSize)));
   readonly pagedOffers = computed(() => {
     const start = this.currentPage() * this.pageSize;
     return this.offers().slice(start, start + this.pageSize);
@@ -77,12 +77,20 @@ export class Lend implements OnInit {
   ngOnInit(): void {
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(4)]],
-      amount: [100, [Validators.required, Validators.min(100), Validators.max(1_000_000), this.maxAvailableValidator.bind(this)]],
+      amount: [
+        100,
+        [
+          Validators.required,
+          Validators.min(100),
+          Validators.max(1_000_000),
+          this.maxAvailableValidator.bind(this),
+        ],
+      ],
       rate: [9, [Validators.required, Validators.min(9), Validators.max(30)]],
       minDurationMonths: [1, [Validators.required, Validators.min(1), Validators.max(72)]],
       maxDurationMonths: [12, [Validators.required, Validators.min(1), Validators.max(72)]],
       minCreditScore: [null, [this.optionalMinValidator(400)]],
-      minMonthlyIncome: [null, [Validators.min(0)]]
+      minMonthlyIncome: [null, [Validators.min(0)]],
     });
 
     this.loans.refreshMyOffers();
@@ -120,7 +128,7 @@ export class Lend implements OnInit {
       minDurationMonths: 1,
       maxDurationMonths: 12,
       minCreditScore: null,
-      minMonthlyIncome: null
+      minMonthlyIncome: null,
     });
     this.editingOffer.set(null);
     this.submitError.set(null);
@@ -135,7 +143,7 @@ export class Lend implements OnInit {
       minDurationMonths: offer.minDurationMonths,
       maxDurationMonths: offer.maxDurationMonths,
       minCreditScore: offer.minCreditScore ?? null,
-      minMonthlyIncome: offer.minMonthlyIncome ?? null
+      minMonthlyIncome: offer.minMonthlyIncome ?? null,
     });
     this.submitError.set(null);
   }
@@ -162,7 +170,7 @@ export class Lend implements OnInit {
       maxDurationMonths: Number(payload.maxDurationMonths),
       minCreditScore: parseOptionalNumber(payload.minCreditScore),
       minMonthlyIncome: parseOptionalNumber(payload.minMonthlyIncome),
-      negotiable: false
+      negotiable: false,
     };
 
     if (request.maxDurationMonths < request.minDurationMonths) {
@@ -175,7 +183,9 @@ export class Lend implements OnInit {
     if (editing) {
       ok = await this.loans.updateOffer(editing.id, request as any);
       if (!ok) {
-        this.submitError.set('Unable to update offer. Ensure there are no borrower conflicts and sufficient wallet funds.');
+        this.submitError.set(
+          'Unable to update offer. Ensure there are no borrower conflicts and sufficient wallet funds.'
+        );
         return;
       }
     } else {
@@ -193,7 +203,9 @@ export class Lend implements OnInit {
   async withdraw(id: string) {
     const success = await this.loans.removeOffer(id);
     if (!success) {
-      this.submitError.set('Unable to withdraw this loan. Ensure it has no pending borrower requests.');
+      this.submitError.set(
+        'Unable to withdraw this loan. Ensure it has no pending borrower requests.'
+      );
     }
   }
 
@@ -205,8 +217,8 @@ export class Lend implements OnInit {
       data: {
         balance: this.walletAvailable(),
         banks: this.wallet.banks(),
-        summary: this.wallet.summary()
-      }
+        summary: this.wallet.summary(),
+      },
     });
   }
 
@@ -232,5 +244,19 @@ export class Lend implements OnInit {
 
   decide(offerId: string, reqId: string, approve: boolean) {
     this.loans.decide(offerId, reqId, approve);
+  }
+
+  /** Count pending requests for an offer */
+  pendingCount(offerId: string): number {
+    return (this.requestsFor(offerId) ?? []).filter(
+      (r) => (r.status ?? '').toLowerCase() === 'pending'
+    ).length;
+  }
+
+  /** Allow edit/withdraw only when no requests or all are Declined */
+  canWithdraw(offerId: string): boolean {
+    const reqs = this.requestsFor(offerId) ?? [];
+    if (reqs.length === 0) return true;
+    return reqs.every((r) => (r.status ?? '').toLowerCase() === 'declined');
   }
 }

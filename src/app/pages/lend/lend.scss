@@ -565,6 +565,35 @@
   display: none !important;
 }
 
+.lender-loan-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(16, 42, 35, 0.08);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.lender-loan-card__footer-meta {
+  font-size: 14px;
+  color: rgba(18, 49, 38, 0.7);
+}
+
+.lender-loan-card__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  .btn {
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+}
+
 /* ===========================
    Responsive
    =========================== */

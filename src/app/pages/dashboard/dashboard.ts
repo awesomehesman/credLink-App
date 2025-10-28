@@ -15,6 +15,7 @@ import { AuthService } from '../../shared/services/auth.service';
 import { WalletService } from '../../shared/services/wallet.service';
 import { WalletAddFundsDialog } from '../../shared/components/header/wallet-add-dialog';
 import { WalletWithdrawDialog } from '../../shared/components/header/wallet-withdraw-dialog';
+import { LoanService } from '../../shared/services/loan.service';
 
 type DashboardMode = 'lender' | 'borrower';
 type LenderTabId = 'marketplace' | 'active' | 'history';
@@ -99,6 +100,7 @@ export class Dashboard {
   private readonly dashboardService = inject(DashboardService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly loans = inject(LoanService);
 
   readonly activeMode = signal<DashboardMode>('lender');
   readonly activeLenderTab = signal<LenderTabId>('marketplace');
@@ -178,9 +180,10 @@ export class Dashboard {
       },
       {
         label: 'Earnings available',
-        value: summary.earningsAvailablePercent !== undefined
-          ? this.formatPercent(summary.earningsAvailablePercent, { showPlus: true })
-          : this.formatCurrency(summary.earningsAvailableAmount ?? 0, { showPlus: true }),
+        value:
+          summary.earningsAvailablePercent !== undefined
+            ? this.formatPercent(summary.earningsAvailablePercent, { showPlus: true })
+            : this.formatCurrency(summary.earningsAvailableAmount ?? 0, { showPlus: true }),
         accent: true,
       },
     ];
@@ -192,12 +195,16 @@ export class Dashboard {
     const nextPaymentValue =
       summary?.nextPaymentAmount !== undefined
         ? `${this.formatCurrency(summary.nextPaymentAmount)}${
-            summary?.nextPaymentDate ? ` • ${this.formatDate(summary.nextPaymentDate, 'short')}` : ''
+            summary?.nextPaymentDate
+              ? ` • ${this.formatDate(summary.nextPaymentDate, 'short')}`
+              : ''
           }`
         : summary?.nextPaymentLabel ?? 'No upcoming payment';
     const nextPaymentHelper =
       summary?.nextPaymentLabel ??
-      (summary?.nextPaymentDate ? 'Upcoming repayment due soon' : 'No upcoming repayments scheduled');
+      (summary?.nextPaymentDate
+        ? 'Upcoming repayment due soon'
+        : 'No upcoming repayments scheduled');
 
     return [
       {
@@ -237,8 +244,8 @@ export class Dashboard {
     },
   ]);
 
-  readonly currentLenderTab = computed(() =>
-    this.lenderTabs().find(tab => tab.id === this.activeLenderTab()) ?? this.lenderTabs()[0]
+  readonly currentLenderTab = computed(
+    () => this.lenderTabs().find((tab) => tab.id === this.activeLenderTab()) ?? this.lenderTabs()[0]
   );
 
   readonly borrowerTabs = computed<BorrowerTab[]>(() => {
@@ -249,14 +256,14 @@ export class Dashboard {
       description: string,
       emptyTitle: string,
       emptyCopy: string,
-      source?: BorrowerLoan[],
+      source?: BorrowerLoan[]
     ): BorrowerTab => ({
       id,
       label,
       description,
       emptyTitle,
       emptyCopy,
-      loans: (source ?? []).map(loan => this.toBorrowerCard(loan, id)),
+      loans: (source ?? []).map((loan) => this.toBorrowerCard(loan, id)),
     });
 
     return [
@@ -289,24 +296,24 @@ export class Dashboard {
 
   readonly currentBorrowerTab = computed(() => {
     const tabs = this.borrowerTabs();
-    return tabs.find(tab => tab.id === this.activeBorrowerTab()) ?? tabs[0];
+    return tabs.find((tab) => tab.id === this.activeBorrowerTab()) ?? tabs[0];
   });
 
   readonly borrowerCurrentLoans = computed(() => this.currentBorrowerTab().loans);
 
   readonly lenderMarketplaceCards = computed<MarketplaceCard[]>(() => {
     const data = this.lenderDashboard()?.marketplace ?? [];
-    return data.map(loan => this.toMarketplaceCard(loan));
+    return data.map((loan) => this.toMarketplaceCard(loan));
   });
 
   readonly lenderActiveCards = computed<PortfolioCard[]>(() => {
     const data = this.lenderDashboard()?.activeLoans ?? [];
-    return data.map(loan => this.toPortfolioCard(loan));
+    return data.map((loan) => this.toPortfolioCard(loan));
   });
 
   readonly lenderHistoryCards = computed<PortfolioCard[]>(() => {
     const data = this.lenderDashboard()?.history ?? [];
-    return data.map(loan => this.toPortfolioCard(loan));
+    return data.map((loan) => this.toPortfolioCard(loan));
   });
 
   readonly lenderCurrentCards = computed(() => {
@@ -397,9 +404,9 @@ export class Dashboard {
         },
       })
       .afterClosed()
-      .subscribe(result => {
+      .subscribe((result) => {
         if (!result || typeof result.amount !== 'number') return;
-        this.walletService.withdraw(result.amount, result.reference).then(ok => {
+        this.walletService.withdraw(result.amount, result.reference).then((ok) => {
           if (!ok) {
             console.warn('Unable to withdraw funds: insufficient available balance.');
           }
@@ -473,14 +480,19 @@ export class Dashboard {
       title: loan.name,
       amount: loan.amount !== undefined ? this.formatCurrency(loan.amount) : undefined,
       rate: loan.interestRate !== undefined ? `${loan.interestRate.toFixed(1)}%` : undefined,
-      duration: loan.durationLabel ?? this.describeDuration(loan.minDurationMonths, loan.maxDurationMonths),
+      duration:
+        loan.durationLabel ?? this.describeDuration(loan.minDurationMonths, loan.maxDurationMonths),
       minCreditScore: loan.minCreditScore !== undefined ? `${loan.minCreditScore}` : undefined,
       minMonthlyIncome:
-        loan.minMonthlyIncome !== undefined ? this.formatCurrency(loan.minMonthlyIncome) : undefined,
+        loan.minMonthlyIncome !== undefined
+          ? this.formatCurrency(loan.minMonthlyIncome)
+          : undefined,
       status: loan.status,
       created: loan.createdAt,
       badge,
-      requests: (loan.borrowerRequests ?? []).map(request => this.toMarketplaceRequestCard(request)),
+      requests: (loan.borrowerRequests ?? []).map((request) =>
+        this.toMarketplaceRequestCard(request)
+      ),
     };
   }
 
@@ -491,7 +503,9 @@ export class Dashboard {
       submitted: request.submittedAt,
       creditScore: request.creditScore !== undefined ? `${request.creditScore}` : undefined,
       monthlyIncome:
-        request.monthlyIncome !== undefined ? this.formatCurrency(request.monthlyIncome) : undefined,
+        request.monthlyIncome !== undefined
+          ? this.formatCurrency(request.monthlyIncome)
+          : undefined,
       credibility: request.credibility,
       status: request.status,
       note: request.note,
@@ -504,7 +518,8 @@ export class Dashboard {
       title: loan.name,
       borrower: loan.borrowerName,
       principal: loan.principal !== undefined ? this.formatCurrency(loan.principal) : undefined,
-      interestRate: loan.interestRate !== undefined ? `${loan.interestRate.toFixed(1)}%` : undefined,
+      interestRate:
+        loan.interestRate !== undefined ? `${loan.interestRate.toFixed(1)}%` : undefined,
       term: loan.termLabel ?? (loan.termMonths ? `${loan.termMonths} month term` : undefined),
       startDate: loan.startDate,
       accruedInterest:
@@ -522,9 +537,7 @@ export class Dashboard {
     }
 
     const startDate =
-      tab === 'pending'
-        ? loan.appliedDate ?? loan.startDate
-        : loan.startDate ?? loan.appliedDate;
+      tab === 'pending' ? loan.appliedDate ?? loan.startDate : loan.startDate ?? loan.appliedDate;
     if (startDate) {
       const formattedStart = this.formatDate(startDate, 'full');
       if (formattedStart) {
@@ -539,8 +552,8 @@ export class Dashboard {
         tab === 'pending'
           ? 'Proposed rate'
           : tab === 'history' && loan.statusTone === 'rejected'
-            ? 'Offered rate'
-            : 'Interest rate';
+          ? 'Offered rate'
+          : 'Interest rate';
       meta.push({
         label: 'Interest rate',
         value: `${prefix} • ${loan.interestRate.toFixed(1)}%`,
@@ -655,5 +668,85 @@ export class Dashboard {
     const prefix = options?.showPlus && value > 0 ? '+ ' : '';
     const percentValue = value > 1 ? value : value * 100;
     return `${prefix}${percentValue.toFixed(1)}%`;
+  }
+
+  /** Count how many requests are still Pending on a marketplace card */
+  pendingCount(loan: { requests: Array<{ status?: string }> }) {
+    return (loan?.requests ?? []).filter((r) => (r.status ?? '').toLowerCase() === 'pending')
+      .length;
+  }
+
+  /** Open a simple dialog with borrower details (minimal, uses existing MatDialog) */
+  viewBorrowerDetails(req: {
+    borrower?: string;
+    creditScore?: string | number;
+    monthlyIncome?: string | number;
+    credibility?: string;
+    note?: string;
+    submitted?: string;
+  }) {
+    const data = {
+      title: req.borrower ?? 'Borrower',
+      lines: [
+        req.submitted ? `Submitted: ${new Date(req.submitted).toLocaleDateString()}` : undefined,
+        req.creditScore ? `Credit score: ${req.creditScore}` : undefined,
+        req.monthlyIncome ? `Monthly income: ${req.monthlyIncome}` : undefined,
+        req.credibility ? `Credibility: ${req.credibility}` : undefined,
+        req.note ? `Note: ${req.note}` : undefined,
+      ].filter(Boolean),
+    };
+
+    // Lightweight inline dialog (reuses your Wallet dialogs styling)
+    this.dialog.open(WalletAddFundsDialog as any, {
+      // reuse panel class for consistent look; content is simple
+      width: '420px',
+      panelClass: 'wallet-dialog-panel',
+      disableClose: false,
+      data,
+    });
+  }
+
+  /** Approve a borrower request (UI-only; adapt to your API as needed) */
+  async approveRequest(offerId: string, requestId: string) {
+    try {
+      // If you later wire a real endpoint, call it here.
+      // For now: reflect the change client-side by reloading dashboards.
+      this.loans.decide(offerId, requestId, true);
+      await this.refreshLender();
+    } catch (e) {
+      console.warn('Approve failed', e);
+    }
+  }
+
+  /** Decline a borrower request (UI-only; adapt to your API as needed) */
+  async declineRequest(offerId: string, requestId: string) {
+    try {
+      this.loans.decide(offerId, requestId, false);
+      await this.refreshLender();
+    } catch (e) {
+      console.warn('Decline failed', e);
+    }
+  }
+
+  /** Withdraw listing (only allowed when no pending requests) */
+  async withdrawListing(offerId: string) {
+    try {
+      const ok = await this.loans.removeOffer(offerId);
+      if (!ok) {
+        console.warn(
+          'Unable to withdraw listing — it may have pending requests or another constraint.'
+        );
+        return;
+      }
+      await this.refreshLender();
+    } catch (e) {
+      console.error('Withdraw listing failed', e);
+    }
+  }
+  /** Can withdraw when there are no requests OR all requests are Declined */
+  canWithdraw(loan: { requests: Array<{ status?: string }> }) {
+    const reqs = loan?.requests ?? [];
+    if (reqs.length === 0) return true;
+    return reqs.every((r) => (r.status ?? '').toLowerCase() === 'declined');
   }
 }

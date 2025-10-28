@@ -92,51 +92,73 @@
           <div class="lender-loans">
             @for (loan of lenderMarketplaceCards(); track loan.id) {
               <article class="lender-loan-card lender-loan-card--marketplace">
-                <header class="lender-loan-card__header">
+                <header class="lender-loan-card__header lender-loan-card__header--marketplace">
                   <div>
                     <h3>{{ loan.title }}</h3>
                     @if (loan.created) {
-                      <p>Created {{ loan.created | date:'mediumDate' }}</p>
+                    <p>Created {{ loan.created | date:'mediumDate' }}</p>
                     }
                   </div>
                   @if (loan.amount) {
-                    <div class="lender-loan-card__amount">{{ loan.amount }}</div>
+                  <div class="lender-loan-card__amount">{{ loan.amount }}</div>
                   }
                 </header>
+
                 <div class="lender-loan-card__meta lender-loan-card__meta--marketplace">
                   @if (loan.rate) {
-                    <div>
-                      <span class="label">Interest rate</span>
-                      <strong>{{ loan.rate }}</strong>
-                    </div>
+                  <div>
+                    <span class="label">Interest rate</span>
+                    <strong>{{ loan.rate }}</strong>
+                  </div>
                   }
                   @if (loan.duration) {
-                    <div>
-                      <span class="label">Duration window</span>
-                      <strong>{{ loan.duration }}</strong>
-                    </div>
+                  <div>
+                    <span class="label">Duration window</span>
+                    <strong>{{ loan.duration }}</strong>
+                  </div>
                   }
                   @if (loan.minCreditScore) {
-                    <div>
-                      <span class="label">Minimum credit score</span>
-                      <strong>{{ loan.minCreditScore }}</strong>
-                    </div>
+                  <div>
+                    <span class="label">Minimum credit score</span>
+                    <strong>{{ loan.minCreditScore }}</strong>
+                  </div>
                   }
                   @if (loan.minMonthlyIncome) {
-                    <div>
-                      <span class="label">Minimum monthly income</span>
-                      <strong>{{ loan.minMonthlyIncome }}</strong>
-                    </div>
-                  }
-                </div>
-                <div class="lender-loan-card__status">
-                  @if (loan.badge) {
-                    <span class="status-pill" data-tone="info">{{ loan.badge }}</span>
-                  } @else if (loan.status) {
-                    <span class="status-pill">{{ loan.status }}</span>
+                  <div>
+                    <span class="label">Minimum monthly income</span>
+                    <strong>{{ loan.minMonthlyIncome }}</strong>
+                  </div>
                   }
                 </div>
 
+                <div class="lender-loan-card__status">
+                  @if (loan.badge) {
+                  <span class="status-pill" data-tone="info">{{ loan.badge }}</span>
+                  } @else if (loan.status) {
+                  <span class="status-pill">{{ loan.status }}</span>
+                  }
+                </div>
+
+                <!-- Footer: Withdraw listing (only if NO pending requests) -->
+                <footer class="lender-loan-card__footer">
+                  <div class="lender-loan-card__footer-meta">
+                    <span class="section-subtitle">
+                      Pending: {{ pendingCount(loan) }} • Total requests: {{ loan.requests.length }}
+                    </span>
+                  </div>
+
+                  <div class="lender-loan-card__actions">
+                    @if (canWithdraw(loan)) {
+                    <button type="button" class="btn btn--danger" (click)="withdrawListing(loan.id)">
+                      Withdraw listing
+                    </button>
+                    }@else {
+                    <span class="section-subtitle">Actions locked: pending requests present</span>
+                    }
+                  </div>
+                </footer>
+
+                <!-- Requests list with actions for PENDING -->
                 <section class="marketplace-requests">
                   <header class="marketplace-requests__header">
                     <h4>Borrower requests</h4>
@@ -146,56 +168,74 @@
                   </header>
 
                   @if (!loan.requests.length) {
-                    <div class="marketplace-requests__empty">No borrower requests yet.</div>
+                  <div class="marketplace-requests__empty">No borrower requests yet.</div>
                   } @else {
-                    @for (request of loan.requests; track request.id) {
-                      <article class="borrower-request">
-                        <div class="borrower-request__identity">
-                          <div class="borrower-request__avatar">{{ request.borrower.slice(0, 1) }}</div>
-                          <div>
-                            <strong>{{ request.borrower }}</strong>
-                            @if (request.submitted) {
-                              <p>Requested on: {{ request.submitted | date:'mediumDate' }}</p>
-                            }
-                          </div>
-                        </div>
-                        <div class="borrower-request__details">
-                          @if (request.creditScore) {
-                            <div>
-                              <span class="label">Credit score</span>
-                              <strong>{{ request.creditScore }}</strong>
-                            </div>
-                          }
-                          @if (request.monthlyIncome) {
-                            <div>
-                              <span class="label">Monthly income</span>
-                              <strong>{{ request.monthlyIncome }}</strong>
-                            </div>
-                          }
-                          @if (request.credibility) {
-                            <div>
-                              <span class="label">Credibility</span>
-                              <strong>{{ request.credibility }}</strong>
-                            </div>
-                          }
-                        </div>
-                        <div class="borrower-request__status">
-                          @if (request.status) {
-                            <span
-                              class="status-pill"
-                              [attr.data-tone]="request.status === 'Approved' ? 'approved' : request.status === 'Declined' ? 'rejected' : 'pending'"
-                            >
-                              {{ request.status }}
-                            </span>
-                          }
-                        </div>
-                        @if (request.note) {
-                          <p class="borrower-request__note">{{ request.note }}</p>
+                  @for (request of loan.requests; track request.id) {
+                  <article class="borrower-request">
+                    <div class="borrower-request__identity">
+                      <div class="borrower-request__avatar">{{ request.borrower.slice(0, 1) }}</div>
+                      <div>
+                        <strong>{{ request.borrower }}</strong>
+                        @if (request.submitted) {
+                        <p>Requested on: {{ request.submitted | date:'mediumDate' }}</p>
                         }
-                      </article>
+                      </div>
+                    </div>
+
+                    <div class="borrower-request__details">
+                      @if (request.creditScore) {
+                      <div>
+                        <span class="label">Credit score</span>
+                        <strong>{{ request.creditScore }}</strong>
+                      </div>
+                      }
+                      @if (request.monthlyIncome) {
+                      <div>
+                        <span class="label">Monthly income</span>
+                        <strong>{{ request.monthlyIncome }}</strong>
+                      </div>
+                      }
+                      @if (request.credibility) {
+                      <div>
+                        <span class="label">Credibility</span>
+                        <strong>{{ request.credibility }}</strong>
+                      </div>
+                      }
+                    </div>
+
+                    <div class="borrower-request__status">
+                      @if (request.status) {
+                      <span class="status-pill"
+                        [attr.data-tone]="request.status === 'Approved' ? 'approved' : request.status === 'Declined' ? 'rejected' : 'pending'">
+                        {{ request.status }}
+                      </span>
+                      }
+                    </div>
+
+                    @if (request.note) {
+                    <p class="borrower-request__note">{{ request.note }}</p>
                     }
+
+                    <!-- Actions: only for Pending -->
+                    @if (request.status === 'Pending') {
+                    <div class="borrower-request__actions">
+                      <button type="button" class="btn btn--ghost btn--small" (click)="viewBorrowerDetails(request)">
+                        View details
+                      </button>
+                      <button type="button" class="btn btn--positive btn--small"
+                        (click)="approveRequest(loan.id, request.id)">
+                        Approve
+                      </button>
+                      <button type="button" class="btn btn--danger btn--small"
+                        (click)="declineRequest(loan.id, request.id)">
+                        Decline
+                      </button>
+                    </div>
+                    }
+                  </article>
                   }
-                </section>
+                  }
+                </section>                
               </article>
             }
           </div>

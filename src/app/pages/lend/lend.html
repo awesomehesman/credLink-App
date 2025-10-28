@@ -166,17 +166,24 @@
               </div>
             </div>
 
-            <footer class="loan-card__footer">
-              <div class="chip-bar">
-                <span class="chip chip--status">{{ offer.status === 'Open' ? 'New listing' : offer.status }}</span>
-                <div class="chip-bar__actions">
-                  <button type="button" class="chip chip--action" (click)="editOffer(offer)" [disabled]="!canModify(offer.id)">
-                    Update loan
-                  </button>
-                  <button type="button" class="chip chip--danger" (click)="withdraw(offer.id)" [disabled]="!canModify(offer.id)">
-                    Withdraw listing
-                  </button>
-                </div>
+            <footer class="lender-loan-card__footer">
+              <div class="lender-loan-card__footer-meta">
+                <span class="section-subtitle">
+                  Pending: {{ pendingCount(offer.id) }} • Total requests: {{ requestsFor(offer.id).length }}
+                </span>
+              </div>
+
+              <div class="lender-loan-card__actions">
+                @if (canWithdraw(offer.id)) {
+                <button type="button" class="btn btn--primary" (click)="editOffer(offer)">
+                  Update loan
+                </button>
+                <button type="button" class="btn btn--danger" (click)="withdraw(offer.id)">
+                  Withdraw listing
+                </button>
+                } @else {
+                <span class="section-subtitle">Actions locked: pending requests present</span>
+                }
               </div>
             </footer>
 
