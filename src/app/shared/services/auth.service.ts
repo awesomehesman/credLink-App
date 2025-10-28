@@ -282,7 +282,8 @@ export class AuthService {
       session;
 
     const user = this.normalizeUser(userSource, session);
-    if (!user?.id) {
+
+    if (user && !user.id) {
       const fallbackId = this.pickString(session, [
         'userId',
         'user_id',
@@ -294,6 +295,7 @@ export class AuthService {
         'lenderId',
         'borrowerId',
       ]);
+
       if (fallbackId) {
         user.id = fallbackId;
       }
@@ -317,10 +319,8 @@ export class AuthService {
     }
     const firstName = this.pickString(raw, ['firstName', 'firstname', 'givenName']);
     const lastName = this.pickString(raw, ['lastName', 'lastname', 'surname']);
-    const name =
-      this.pickString(raw, ['name', 'fullName', 'displayName']) ??
-      [firstName, lastName].filter(Boolean).join(' ') ||
-      undefined;
+    const name = this.pickString(raw, ['name', 'fullName', 'displayName']) ??
+      ([firstName, lastName].filter(Boolean).join(' ') || undefined);
     const email =
       this.pickString(raw, ['email', 'userEmail', 'username', 'mail'])?.toLowerCase() ?? '';
     const id =

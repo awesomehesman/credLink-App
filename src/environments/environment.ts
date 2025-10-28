@@ -12,7 +12,7 @@ const inferredBaseUrl =
         return '';
       }
     }
-    return 'https://credlink-appsvc-centralus-001.azurewebsites.net';
+    return 'https://credlink-api-centralus-aa.azurewebsites.net';
   })();
 
 export const environment = {

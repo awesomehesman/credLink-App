@@ -1,6 +1,6 @@
 {
   "/api": {
-    "target": "https://credlink-appsvc-centralus-001.azurewebsites.net/",
+    "target": "https://credlink-api-centralus-aa.azurewebsites.net/",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"

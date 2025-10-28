@@ -6,5 +6,5 @@ export const environment = {
    */
   apiBaseUrl:
     (globalThis as any).NG_APP_API_BASE_URL ??
-    'https://credlink-appsvc-centralus-001.azurewebsites.net',
+    'https://credlink-api-centralus-aa.azurewebsites.net',
 };

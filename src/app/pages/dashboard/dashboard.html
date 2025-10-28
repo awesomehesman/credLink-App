@@ -141,7 +141,7 @@
                   <header class="marketplace-requests__header">
                     <h4>Borrower requests</h4>
                     <span class="marketplace-requests__count">
-                      {{ loan.requests.length ? loan.requests.length + ' pending' : 'None yet' }}
+                      {{ loan.requests.length ? loan.requests.length + ' request(s)' : 'None yet' }}
                     </span>
                   </header>
 
@@ -155,7 +155,7 @@
                           <div>
                             <strong>{{ request.borrower }}</strong>
                             @if (request.submitted) {
-                              <p>Submitted {{ request.submitted | date:'mediumDate' }}</p>
+                              <p>Requested on: {{ request.submitted | date:'mediumDate' }}</p>
                             }
                           </div>
                         </div>
@@ -366,7 +366,7 @@
                 <div>
                   <h3>{{ loan.name }}</h3>
                   @if (loan.lender) {
-                    <p>Issued by {{ loan.lender }}</p>
+                    <p>{{ loan.lender }}</p>
                   }
                 </div>
                 @if (loan.amountBadge) {

@@ -180,26 +180,54 @@
               </div>
             </footer>
 
-            <section class="loan-card__requests">
-              <h4>Borrower requests</h4>
+            <section class="loan-card__requests marketplace-requests">
+              <header class="marketplace-requests__header">
+                <h4>Borrower requests</h4>
+                <span class="marketplace-requests__count">
+                  {{ requestsFor(offer.id).length ? (requestsFor(offer.id).length + ' request(s)') : 'None yet' }}
+                </span>
+              </header>
+
               @if (!requestsFor(offer.id).length) {
-                <p class="muted">No borrower requests yet.</p>
+              <div class="marketplace-requests__empty">No borrower requests yet.</div>
               } @else {
-                @for (req of requestsFor(offer.id); track req.id) {
-                  <div class="request">
-                    <div>
-                      <strong>{{ req.borrowerId.slice(0, 8) }}…</strong>
-                      <span>Status: {{ req.status }}</span>
-                      <span>Requested rate: {{ req.requestedRate || offer.rate }}%</span>
-                    </div>
-                    @if (req.status === 'Pending') {
-                      <div class="request__actions">
-                        <button mat-button color="primary" (click)="decide(offer.id, req.id, true)">Approve</button>
-                        <button mat-button color="warn" (click)="decide(offer.id, req.id, false)">Decline</button>
-                      </div>
-                    }
+              @for (req of requestsFor(offer.id); track req.id) {
+              <article class="borrower-request">
+                <div class="borrower-request__identity">
+                  <div class="borrower-request__avatar">
+                    {{ (req.borrowerId || 'B').slice(0,1) }}
                   </div>
+                  <div>
+                    <strong>{{ req.borrowerId }}</strong>
+                  </div>
+                </div>
+
+                <div class="borrower-request__details">
+                  <div>
+                    <span class="label">Requested rate</span>
+                    <strong>{{ (req.requestedRate ?? offer.rate) }}%</strong>
+                  </div>
+                  <div>
+                    <span class="label">Status</span>
+                    <strong>{{ req.status }}</strong>
+                  </div>
+                </div>
+
+                <div class="borrower-request__status">
+                  <span class="status-pill"
+                    [attr.data-tone]="req.status === 'Approved' ? 'approved' : req.status === 'Declined' ? 'rejected' : 'pending'">
+                    {{ req.status }}
+                  </span>
+                </div>
+
+                @if (req.status === 'Pending') {
+                <div class="borrower-request__actions">
+                  <button class="btn btn--positive btn--small" (click)="decide(offer.id, req.id, true)">Approve</button>
+                  <button class="btn btn--danger btn--small" (click)="decide(offer.id, req.id, false)">Decline</button>
+                </div>
                 }
+              </article>
+              }
               }
             </section>
           </article>
