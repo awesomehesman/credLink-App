@@ -1,14 +1,14 @@
 
 <mat-nav-list>
-  <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
+  <a mat-list-item routerLink="/dashboard" routerLinkActive="active" (click)="handleNavigate()">
     <mat-icon matListItemIcon>dashboard</mat-icon>
     <span matListItemTitle>Dashboard</span>
   </a>
-  <a mat-list-item routerLink="/settings" routerLinkActive="active">
+  <a mat-list-item routerLink="/settings" routerLinkActive="active" (click)="handleNavigate()">
     <mat-icon matListItemIcon>settings</mat-icon>
     <span matListItemTitle>Settings</span>
   </a>
-  <a mat-list-item routerLink="/auth" routerLinkActive="active">
+  <a mat-list-item routerLink="/auth" routerLinkActive="active" (click)="handleNavigate()">
     <mat-icon matListItemIcon>logout</mat-icon>
     <span matListItemTitle>Sign Out</span>
   </a>

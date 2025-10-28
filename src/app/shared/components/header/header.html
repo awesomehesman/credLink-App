@@ -1,5 +1,8 @@
 
-<mat-toolbar color="primary">
+<mat-toolbar color="primary" class="main-toolbar">
+  <button mat-icon-button class="nav-toggle" (click)="toggleMenu()">
+    <mat-icon>menu</mat-icon>
+  </button>
   <img class="onboard-logo" src="assets/images/app-logo-2.png" alt="CredLink logo" />
   <a mat-button routerLink="/borrow">Borrow Money</a>
   <a mat-button routerLink="/lend">Lend Money</a>
