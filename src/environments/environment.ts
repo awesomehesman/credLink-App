@@ -12,7 +12,7 @@ const inferredBaseUrl =
         return '';
       }
     }
-    return 'http://localhost:8085';
+    return 'https://credlink-appsvc-centralus-001.azurewebsites.net';
   })();
 
 export const environment = {

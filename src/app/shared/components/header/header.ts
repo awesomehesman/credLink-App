@@ -6,10 +6,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { WalletAddFundsDialog } from './wallet-add-dialog';
 import { WalletWithdrawDialog } from './wallet-withdraw-dialog';
 import { WalletService, WALLET_BANKS } from '../../services/wallet.service';
+import { AuthService } from '../../services/auth.service';
 
 
 @Component({
@@ -31,6 +32,8 @@ import { WalletService, WALLET_BANKS } from '../../services/wallet.service';
 export class Header {
   private readonly dialog = inject(MatDialog);
   private readonly wallet = inject(WalletService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   @Output() menuToggle = new EventEmitter<void>();
 
   readonly walletBalance = computed(() => this.wallet.available());
@@ -71,5 +74,13 @@ export class Header {
         }
       });
     });
+  }
+
+  async signOut() {
+    const ok = await this.auth.logout();
+    if (!ok) {
+      console.warn('Signed out locally after API logout failed.');
+    }
+    this.router.navigateByUrl('/');
   }
 }

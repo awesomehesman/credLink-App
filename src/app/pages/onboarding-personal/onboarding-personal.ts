@@ -100,6 +100,10 @@ export class OnboardingPersonal implements OnInit {
     try {
       const profile = await this.profile.fetchPersonalInfo();
       if (!profile) return;
+      const identificationControlValue =
+        this.mapIdentificationTypeForControl(profile.identificationType) ??
+        this.mapIdentificationTypeForControl(profile.idKind) ??
+        'sa-id';
       this.form.patchValue({
         firstName: profile.firstName ?? '',
         middleName: profile.middleName ?? '',
@@ -107,10 +111,7 @@ export class OnboardingPersonal implements OnInit {
         email: profile.email ?? '',
         phone: profile.phoneNumber ?? '',
         dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth) : null,
-        identificationType:
-          profile.identificationType === 'passport' || profile.idKind === 'Passport'
-            ? 'passport'
-            : 'sa-id',
+        identificationType: identificationControlValue,
         nationalIdOrPassport: profile.governmentId ?? '',
         idExpiry: profile.idExpiry ? new Date(profile.idExpiry) : null,
         companyName: profile.businessName ?? '',
@@ -184,5 +185,16 @@ export class OnboardingPersonal implements OnInit {
       ]);
     }
     docControl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private mapIdentificationTypeForControl(value: string | undefined | null): 'sa-id' | 'passport' | null {
+    if (!value) return null;
+    const normalized = value.toString().trim().toLowerCase();
+    if (!normalized) return null;
+    if (normalized.includes('passport')) return 'passport';
+    if (normalized === 'sa-id' || normalized.includes('south african') || normalized.includes('national')) {
+      return 'sa-id';
+    }
+    return null;
   }
 }

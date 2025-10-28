@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../shared/services/auth.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -25,7 +25,12 @@ export class Auth {
   signInForm!: FormGroup;
   signUpForm!: FormGroup;
 
-  constructor(private fb: FormBuilder, private router: Router, private auth: AuthService) {
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private route: ActivatedRoute,
+    private auth: AuthService
+  ) {
     this.signInForm = this.fb.group({
       email: ['', Validators.required],
       password: ['', Validators.required],
@@ -54,12 +59,26 @@ export class Auth {
     this.signUpForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       if (this.signUpErrorSig()) this.signUpErrorSig.set(null);
     });
+
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const mode = (params.get('mode') ?? '').toLowerCase();
+      const toSignIn = mode !== 'signup';
+      this.isSignInSig.set(toSignIn);
+      this.signInErrorSig.set(null);
+      this.signUpErrorSig.set(null);
+    });
   }
 
   swap(toSignIn: boolean) {
     this.isSignInSig.set(toSignIn);
     this.signInErrorSig.set(null);
     this.signUpErrorSig.set(null);
+    const queryParams = toSignIn ? { mode: null } : { mode: 'signup' };
+    this.router.navigate([], {
+      queryParams,
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   async submitSignIn() {

@@ -10,10 +10,10 @@ export interface PersonalInfoPayload {
   email?: string;
   phoneNumber?: string;
   dateOfBirth?: string;
-  idKind?: string;
+  idKind?: 'South African ID' | 'Passport';
   governmentId?: string;
   idExpiry?: string | null;
-  identificationType?: 'sa-id' | 'passport';
+  identificationType?: 'South African ID' | 'Passport';
   employmentStatus?: string;
   employmentStatusOther?: string | null;
   monthlyIncome?: number | null;
@@ -41,7 +41,7 @@ interface ApiUserResponse {
   idKind?: string;
   governmentId?: string;
   idExpiry?: string;
-  identificationType?: 'sa-id' | 'passport' | string;
+  identificationType?: string;
   employmentStatus?: string;
   employmentStatusOther?: string;
   monthlyIncome?: number | null;
@@ -95,11 +95,11 @@ export class ProfileService {
     const email = this.asString(formValue['email'])?.toLowerCase();
     const phoneNumber = this.asString(formValue['phone']);
     const dateOfBirth = this.toIsoDate(formValue['dateOfBirth']);
-    const identificationType = this.asString(formValue['identificationType']) as
-      | 'sa-id'
-      | 'passport'
-      | undefined;
+    const identificationTypeInput = this.asString(formValue['identificationType']);
     const governmentId = this.asString(formValue['nationalIdOrPassport']);
+    const identificationType =
+      this.mapToApiIdentificationType(identificationTypeInput) ??
+      (governmentId ? 'South African ID' : undefined);
     const idExpiry = this.toIsoDateOrNull(formValue['idExpiry']);
     const companyName = this.asString(formValue['companyName']);
     const employmentStatus = this.asString(formValue['employmentStatus']);
@@ -118,15 +118,8 @@ export class ProfileService {
       email: email ?? undefined,
       phoneNumber,
       dateOfBirth,
-      idKind:
-        identificationType === 'sa-id'
-          ? 'NationalID'
-          : identificationType === 'passport'
-            ? 'Passport'
-            : governmentId
-              ? 'NationalID'
-              : undefined,
       identificationType,
+      idKind: identificationType,
       governmentId,
       idExpiry,
       employmentStatus,
@@ -173,6 +166,21 @@ export class ProfileService {
     if (value === null || value === undefined || value === '') return undefined;
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : undefined;
+  }
+
+  private mapToApiIdentificationType(
+    value: string | undefined
+  ): 'South African ID' | 'Passport' | undefined {
+    if (!value) return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return undefined;
+    if (normalized === 'sa-id' || normalized === 'south african id' || normalized === 'nationalid') {
+      return 'South African ID';
+    }
+    if (normalized === 'passport') {
+      return 'Passport';
+    }
+    return undefined;
   }
 
   private compactObject<T>(value: T): T {
