@@ -1,338 +1,440 @@
 <div class="dashboard-page">
   <div class="mode-switch">
-    <button type="button" class="mode-switch__btn" [class.is-active]="activeMode() === 'lender'"
-      (click)="switchMode('lender')">Lender</button>
-    <button type="button" class="mode-switch__btn" [class.is-active]="activeMode() === 'borrower'"
-      (click)="switchMode('borrower')">Borrower</button>
+    <button
+      type="button"
+      class="mode-switch__btn"
+      [class.is-active]="activeMode() === 'lender'"
+      (click)="switchMode('lender')"
+    >
+      Lender Dashboard
+    </button>
+    <button
+      type="button"
+      class="mode-switch__btn"
+      [class.is-active]="activeMode() === 'borrower'"
+      (click)="switchMode('borrower')"
+    >
+      Borrower Dashboard
+    </button>
   </div>
 
-  @if (activeMode() === 'borrower') {
-  <section class="borrower-view">
-    <header class="borrower-overview">
-      <h1>Your Loan/Credit Portfolio</h1>
-      <div class="overview-stats">
-        @for (item of borrowerSummary(); track item.label) {
-        <div class="overview-card" [class.is-accent]="item.accent">
-          <div class="overview-card__label">{{ item.label }}</div>
-          <div class="overview-card__value">{{ item.value }}</div>
-          @if (item.helper) {
-          <p class="overview-card__helper">{{ item.helper }}</p>
-          }
-        </div>
-        }
-      </div>
-    </header>
-
-    <div class="borrower-tabs">
-      @for (tab of borrowerTabs(); track tab.id) {
-      <button type="button" class="borrower-tabs__btn" [class.is-active]="activeBorrowerTab() === tab.id"
-        (click)="setBorrowerTab(tab.id)">
-        {{ tab.label }}
-      </button>
-      }
-    </div>
-
-    @if (currentTab(); as tab) {
-    <p class="borrower-tab__description">{{ tab.description }}</p>
-    @if (!tab.loans.length) {
-    <div class="empty-state">
-      <h2>No loans to show</h2>
-      <p>Once loans appear in this category they will be listed here.</p>
-    </div>
-    } @else {
-    <div class="borrower-loans">
-      @for (loan of tab.loans; track loan.name) {
-      <article class="borrower-loan-card">
-        <header class="borrower-loan-card__header">
-          <div>
-            <h3>{{ loan.name }}</h3>
-            <p>{{ loan.lender }}</p>
-          </div>
-          <div class="borrower-loan-card__amount">{{ loan.amountOwed }}</div>
-        </header>
-        <div class="borrower-loan-card__meta">
-          <div>
-            <span class="label">Term</span>
-            <strong>{{ loan.term }}</strong>
-          </div>
-          <div>
-            <span class="label">Start date</span>
-            <strong>{{ loan.startDate }}</strong>
-          </div>
-          <div>
-            <span class="label">Interest rate</span>
-            <strong>{{ loan.interestRate }}</strong>
-          </div>
-          @if (loan.nextPayment) {
-          <div>
-            <span class="label">Next payment</span>
-            <strong>{{ loan.nextPayment }}</strong>
-          </div>
-          }
-          @if (loan.interestPaid) {
-          <div>
-            <span class="label">Interest paid</span>
-            <strong>{{ loan.interestPaid }}</strong>
-          </div>
-          }
-          @if (loan.totalPaid) {
-          <div>
-            <span class="label">Total paid</span>
-            <strong>{{ loan.totalPaid }}</strong>
-          </div>
-          }
-        </div>
-        <footer class="borrower-loan-card__footer">
-          <div class="borrower-loan-card__footer-main">
-            @if (loan.status) {
-              <span class="status-pill" [attr.data-tone]="loan.statusTone ?? 'info'">{{ loan.status }}</span>
-            }
-            @if (loan.rejectionReason) {
-              <p class="loan-note">Reason: {{ loan.rejectionReason }}</p>
-            }
-          </div>
-        </footer>
-      </article>
-      }
-    </div>
-    }
-    }
-  </section>
-  } @else {
-  <section class="lender-view">
-    <header class="lender-overview">
-      <h2>Your Lending/Investment Portfolio</h2>
-      <div class="overview-stats">
-        @for (item of lenderOverview(); track item.label) {
-        <div class="overview-card" [class.is-accent]="item.accent">
-          <div class="overview-card__label">{{ item.label }}</div>
-          <div class="overview-card__value">{{ item.value }}</div>
-        </div>
-        }
-      </div>
-      <div class="overview-actions">
-        <button type="button" class="action-chip">
-          <span class="action-chip__icon">⬆</span>
-          <span>Add funds</span>
-        </button>
-        <button type="button" class="action-chip">
-          <span class="action-chip__icon">⬇</span>
-          <span>Withdraw</span>
-        </button>
-      </div>
-    </header>
-
-    <div class="lender-tabs">
-      @for (tab of lenderTabs(); track tab.id) {
-      <button type="button" class="lender-tabs__btn" [class.is-active]="activeLenderTab() === tab.id"
-        (click)="setLenderTab(tab.id)">
-        {{ tab.label }}
-      </button>
-      }
-    </div>
-
-    @if (currentLenderTab(); as lenderTab) {
-    <p class="lender-tab__description">{{ lenderTab.description }}</p>
-    @if (!lenderTab.loans.length) {
-    <div class="empty-state">
-      <h2>No loans to show</h2>
-      <p>Once loans appear in this category they will be listed here.</p>
-    </div>
-    } @else {
-    <div class="lender-loans">
-      @for (loan of lenderTab.loans; track loan.id) {
-        @if (lenderTab.id === 'marketplace') {
-      <article class="lender-loan-card lender-loan-card--marketplace">
-        <header class="lender-loan-card__header lender-loan-card__header--marketplace">
-          <div>
-            <h3>{{ loan.name }}</h3>
-            <p>Created {{ loan.createdDate }}</p>
-          </div>
-          <div class="lender-loan-card__amount">{{ loan.amount }}</div>
-        </header>
-        <div class="lender-loan-card__meta lender-loan-card__meta--marketplace">
-          <div>
-            <span class="label">Interest rate</span>
-            <strong>{{ loan.interestRate }}</strong>
-          </div>
-          <div>
-            <span class="label">Duration window</span>
-            <strong>{{ loan.durationWindow ?? '—' }}</strong>
-          </div>
-          <div>
-            <span class="label">Minimum credit score</span>
-            <strong>{{ loan.minCreditScore ?? '—' }}</strong>
-          </div>
-          <div>
-            <span class="label">Minimum monthly income</span>
-            <strong>{{ loan.minMonthlyIncome ?? '—' }}</strong>
-          </div>
-        </div>
-        @if (loan.status) {
-        <div class="lender-loan-card__status">
-          <span class="status-pill">{{ loan.status }}</span>
-        </div>
-        }
-
-        <section class="marketplace-requests">
-          <header class="marketplace-requests__header">
-            <h4>Borrower requests</h4>
-            @if (loan.borrowerRequests?.length) {
-            <span class="marketplace-requests__count">{{ pendingRequestsCount(loan) }} pending</span>
-            }
-          </header>
-          @if (!loan.borrowerRequests?.length) {
-          <div class="marketplace-requests__empty">
-            No borrower requests yet.
-          </div>
-          } @else {
-          @for (request of loan.borrowerRequests; track request.id) {
-          <article class="borrower-request">
-            <div class="borrower-request__identity">
-              <div class="borrower-request__avatar">{{ request.requester.slice(0, 1) }}</div>
-              <div>
-                <strong>{{ request.requester }}</strong>
-                <p>{{ request.submittedDate }}</p>
-              </div>
-            </div>
-            <div class="borrower-request__details">
-              <div>
-                <span class="label">Credit score</span>
-                <strong>{{ request.creditScore }}</strong>
-              </div>
-              <div>
-                <span class="label">Monthly income</span>
-                <strong>{{ request.monthlyIncome }}</strong>
-              </div>
-              <div>
-                <span class="label">Credibility status</span>
-                <strong>{{ request.credibility }}</strong>
-              </div>
-            </div>
-            <div class="borrower-request__status">
-              @if (request.status) {
-              <span class="status-pill" [attr.data-tone]="request.status === 'Approved' ? 'approved' : request.status === 'Declined' ? 'rejected' : 'pending'">
-                {{ request.status }}
-              </span>
+  @if (activeMode() === 'lender') {
+    <section class="lender-view">
+      <header class="lender-overview">
+        <h1>Your Lending/Investment Portfolio</h1>
+        <p class="overview-description">
+          Track portfolio performance, manage offers, and review returns across your lending activity.
+        </p>
+        <div class="overview-stats">
+          @for (card of lenderSummaryCards(); track card.label) {
+            <article class="overview-card" [class.is-accent]="card.accent">
+              <div class="overview-card__label">{{ card.label }}</div>
+              <div class="overview-card__value">{{ card.value }}</div>
+              @if (card.helper) {
+                <p class="overview-card__helper">{{ card.helper }}</p>
               }
-            </div>
-            @if (request.note) {
-            <p class="borrower-request__note">{{ request.note }}</p>
-            }
-            @if (request.declineReason) {
-            <p class="borrower-request__note">Decline reason: {{ request.declineReason }}</p>
-            }
-            <div class="borrower-request__actions">
-              <button type="button" class="btn btn--ghost" (click)="viewBorrowerProfile(loan.id, request.id)">
-                View requester profile
-              </button>
-              @if (request.status === 'Pending') {
-              <button type="button" class="btn btn--positive" (click)="approveRequest(loan.id, request.id)">Approve request</button>
-              <button type="button" class="btn btn--danger" (click)="openDeclineModal(loan.id, request.id)">Decline</button>
-              }
-            </div>
-          </article>
+            </article>
           }
-          }
-        </section>
+        </div>
+        <div class="overview-actions">
+          <button type="button" class="action-chip" (click)="openAddFunds()">
+            <span class="action-chip__icon">⬆</span>
+            <span>Add funds</span>
+          </button>
+          <button type="button" class="action-chip" (click)="openWithdrawFunds()">
+            <span class="action-chip__icon">⬇</span>
+            <span>Withdraw</span>
+          </button>
+          <button type="button" class="action-chip" (click)="goToLend()">
+            <span class="action-chip__icon">✎</span>
+            <span>Manage offers</span>
+          </button>
+        </div>
+      </header>
 
-        <footer class="lender-loan-card__footer lender-loan-card__footer--marketplace">
-          <div class="lender-loan-card__actions">
-            <button type="button" class="btn btn--ghost">Update loan</button>
-            <button type="button" class="btn btn--danger" (click)="openWithdrawModal(loan.id)">Withdraw listing</button>
+      <div class="dashboard-tabs">
+        @for (tab of lenderTabs(); track tab.id) {
+          <button
+            type="button"
+            class="dashboard-tabs__btn"
+            [class.is-active]="activeLenderTab() === tab.id"
+            (click)="setLenderTab(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        }
+      </div>
+
+      @if (isLenderLoading()) {
+        <div class="status-banner info">
+          Syncing your lending data…
+          <button type="button" class="btn btn--ghost btn--small" (click)="refreshLender()">Refresh</button>
+        </div>
+      } @else if (lenderErrorMessage()) {
+        <div class="status-banner error">
+          {{ lenderErrorMessage() }}
+          <button type="button" class="btn btn--ghost btn--small" (click)="refreshLender()">Try again</button>
+        </div>
+      }
+
+      <p class="tab-description">{{ currentLenderTab().description }}</p>
+
+      @if (!lenderCurrentCards().length && !isLenderLoading() && !lenderErrorMessage()) {
+        <div class="empty-state">
+          <h2>No data yet</h2>
+          <p>
+            Start by publishing an offer or processing existing requests; updates will appear here instantly.
+          </p>
+          <button type="button" class="btn btn--primary" (click)="goToLend()">Create a lending offer</button>
+        </div>
+      } @else {
+        @if (activeLenderTab() === 'marketplace') {
+          <div class="lender-loans">
+            @for (loan of lenderMarketplaceCards(); track loan.id) {
+              <article class="lender-loan-card lender-loan-card--marketplace">
+                <header class="lender-loan-card__header lender-loan-card__header--marketplace">
+                  <div>
+                    <h3>{{ loan.title }}</h3>
+                    @if (loan.created) {
+                    <p>Created {{ loan.created | date:'mediumDate' }}</p>
+                    }
+                  </div>
+                  @if (loan.amount) {
+                  <div class="lender-loan-card__amount">{{ loan.amount }}</div>
+                  }
+                </header>
+
+                <div class="lender-loan-card__meta lender-loan-card__meta--marketplace">
+                  @if (loan.rate) {
+                  <div>
+                    <span class="label">Interest rate</span>
+                    <strong>{{ loan.rate }}</strong>
+                  </div>
+                  }
+                  @if (loan.duration) {
+                  <div>
+                    <span class="label">Duration window</span>
+                    <strong>{{ loan.duration }}</strong>
+                  </div>
+                  }
+                  @if (loan.minCreditScore) {
+                  <div>
+                    <span class="label">Minimum credit score</span>
+                    <strong>{{ loan.minCreditScore }}</strong>
+                  </div>
+                  }
+                  @if (loan.minMonthlyIncome) {
+                  <div>
+                    <span class="label">Minimum monthly income</span>
+                    <strong>{{ loan.minMonthlyIncome }}</strong>
+                  </div>
+                  }
+                </div>
+
+                <div class="lender-loan-card__status">
+                  @if (loan.badge) {
+                  <span class="status-pill" data-tone="info">{{ loan.badge }}</span>
+                  } @else if (loan.status) {
+                  <span class="status-pill">{{ loan.status }}</span>
+                  }
+                </div>
+
+                <!-- Footer: Withdraw listing (only if NO pending requests) -->
+                <footer class="lender-loan-card__footer">
+                  <div class="lender-loan-card__footer-meta">
+                    <span class="section-subtitle">
+                      Pending: {{ pendingCount(loan) }} • Total requests: {{ loan.requests.length }}
+                    </span>
+                  </div>
+
+                  <div class="lender-loan-card__actions">
+                    @if (canWithdraw(loan)) {
+                    <button type="button" class="btn btn--danger" (click)="withdrawListing(loan.id)">
+                      Withdraw listing
+                    </button>
+                    }@else {
+                    <span class="section-subtitle">Actions locked: pending requests present</span>
+                    }
+                  </div>
+                </footer>
+
+                <!-- Requests list with actions for PENDING -->
+                <section class="marketplace-requests">
+                  <header class="marketplace-requests__header">
+                    <h4>Borrower requests</h4>
+                    <span class="marketplace-requests__count">
+                      {{ loan.requests.length ? loan.requests.length + ' request(s)' : 'None yet' }}
+                    </span>
+                  </header>
+
+                  @if (!loan.requests.length) {
+                  <div class="marketplace-requests__empty">No borrower requests yet.</div>
+                  } @else {
+                  @for (request of loan.requests; track request.id) {
+                  <article class="borrower-request">
+                    <div class="borrower-request__identity">
+                      <div class="borrower-request__avatar">{{ request.borrower.slice(0, 1) }}</div>
+                      <div>
+                        <strong>{{ request.borrower }}</strong>
+                        @if (request.submitted) {
+                        <p>Requested on: {{ request.submitted | date:'mediumDate' }}</p>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="borrower-request__details">
+                      @if (request.creditScore) {
+                      <div>
+                        <span class="label">Credit score</span>
+                        <strong>{{ request.creditScore }}</strong>
+                      </div>
+                      }
+                      @if (request.monthlyIncome) {
+                      <div>
+                        <span class="label">Monthly income</span>
+                        <strong>{{ request.monthlyIncome }}</strong>
+                      </div>
+                      }
+                      @if (request.credibility) {
+                      <div>
+                        <span class="label">Credibility</span>
+                        <strong>{{ request.credibility }}</strong>
+                      </div>
+                      }
+                    </div>
+
+                    <div class="borrower-request__status">
+                      @if (request.status) {
+                      <span class="status-pill"
+                        [attr.data-tone]="request.status === 'Approved' ? 'approved' : request.status === 'Declined' ? 'rejected' : 'pending'">
+                        {{ request.status }}
+                      </span>
+                      }
+                    </div>
+
+                    @if (request.note) {
+                    <p class="borrower-request__note">{{ request.note }}</p>
+                    }
+
+                    <!-- Actions: only for Pending -->
+                    @if (request.status === 'Pending') {
+                    <div class="borrower-request__actions">
+                      <button type="button" class="btn btn--ghost btn--small" (click)="viewBorrowerDetails(request)">
+                        View details
+                      </button>
+                      <button type="button" class="btn btn--positive btn--small"
+                        (click)="approveRequest(loan.id, request.id)">
+                        Approve
+                      </button>
+                      <button type="button" class="btn btn--danger btn--small"
+                        (click)="declineRequest(loan.id, request.id)">
+                        Decline
+                      </button>
+                    </div>
+                    }
+                  </article>
+                  }
+                  }
+                </section>                
+              </article>
+            }
           </div>
-        </footer>
-      </article>
+        } @else if (activeLenderTab() === 'active') {
+          <div class="lender-loans">
+            @for (loan of lenderActiveCards(); track loan.id) {
+              <article class="lender-loan-card">
+                <header class="lender-loan-card__header">
+                  <div>
+                    <h3>{{ loan.title }}</h3>
+                    @if (loan.borrower) {
+                      <p>To {{ loan.borrower }}</p>
+                    }
+                  </div>
+                  @if (loan.principal) {
+                    <div class="lender-loan-card__amount">{{ loan.principal }}</div>
+                  }
+                </header>
+                <div class="lender-loan-card__meta">
+                  @if (loan.interestRate) {
+                    <div>
+                      <span class="label">Interest rate</span>
+                      <strong>{{ loan.interestRate }}</strong>
+                    </div>
+                  }
+                  @if (loan.term) {
+                    <div>
+                      <span class="label">Term</span>
+                      <strong>{{ loan.term }}</strong>
+                    </div>
+                  }
+                  @if (loan.startDate) {
+                    <div>
+                      <span class="label">Start date</span>
+                      <strong>{{ loan.startDate | date:'mediumDate' }}</strong>
+                    </div>
+                  }
+                  @if (loan.accruedInterest) {
+                    <div>
+                      <span class="label">Accrued interest</span>
+                      <strong>{{ loan.accruedInterest }}</strong>
+                    </div>
+                  }
+                </div>
+                <footer class="lender-loan-card__footer">
+                  @if (loan.status) {
+                    <span class="status-pill">{{ loan.status }}</span>
+                  }
+                </footer>
+              </article>
+            }
+          </div>
         } @else {
-      <article class="lender-loan-card">
-        <header class="lender-loan-card__header">
-          <div>
-            <h3>{{ loan.name }}</h3>
-            @if (loan.borrower) {
-            <p>{{ loan.borrower }}</p>
+          <div class="lender-loans">
+            @for (loan of lenderHistoryCards(); track loan.id) {
+              <article class="lender-loan-card">
+                <header class="lender-loan-card__header">
+                  <div>
+                    <h3>{{ loan.title }}</h3>
+                    @if (loan.borrower) {
+                      <p>To {{ loan.borrower }}</p>
+                    }
+                  </div>
+                  @if (loan.principal) {
+                    <div class="lender-loan-card__amount">{{ loan.principal }}</div>
+                  }
+                </header>
+                <div class="lender-loan-card__meta">
+                  @if (loan.interestRate) {
+                    <div>
+                      <span class="label">Interest rate</span>
+                      <strong>{{ loan.interestRate }}</strong>
+                    </div>
+                  }
+                  @if (loan.term) {
+                    <div>
+                      <span class="label">Term</span>
+                      <strong>{{ loan.term }}</strong>
+                    </div>
+                  }
+                  @if (loan.startDate) {
+                    <div>
+                      <span class="label">Start date</span>
+                      <strong>{{ loan.startDate | date:'mediumDate' }}</strong>
+                    </div>
+                  }
+                  @if (loan.completed) {
+                    <div>
+                      <span class="label">Settled</span>
+                      <strong>{{ loan.completed | date:'mediumDate' }}</strong>
+                    </div>
+                  }
+                  @if (loan.accruedInterest) {
+                    <div>
+                      <span class="label">Interest earned</span>
+                      <strong>{{ loan.accruedInterest }}</strong>
+                    </div>
+                  }
+                </div>
+                <footer class="lender-loan-card__footer">
+                  @if (loan.status) {
+                    <span class="status-pill">{{ loan.status }}</span>
+                  }
+                </footer>
+              </article>
             }
           </div>
-          <div class="lender-loan-card__amount">{{ loan.amount }}</div>
-        </header>
-        <div class="lender-loan-card__meta">
-          <div>
-            <span class="label">Start date</span>
-            <strong>{{ loan.startDate ?? '—' }}</strong>
-          </div>
-          <div>
-            <span class="label">Interest rate</span>
-            <strong>{{ loan.interestRate }}</strong>
-          </div>
-          <div>
-            <span class="label">Term</span>
-            <strong>{{ loan.term }}</strong>
-          </div>
-          @if (loan.accruedInterest) {
-          <div>
-            <span class="label">Accrued interest</span>
-            <strong>{{ loan.accruedInterest }}</strong>
-          </div>
-          }
-        </div>
-        <footer class="lender-loan-card__footer">
-          <div class="lender-loan-card__footer-meta">
-            @if (loan.status) { <span class="status-pill">{{ loan.status }}</span> }
-          </div>
-          <div class="lender-loan-card__actions">
-            <button type="button" class="btn btn--ghost">View</button>
-          </div>
-        </footer>
-      </article>
         }
       }
-    </div>
-    }
-
-    @if (pendingWithdrawLoanId()) {
-    <div class="modal is-visible">
-      <div class="modal__backdrop" (click)="closeWithdrawModal()"></div>
-      <div class="modal__dialog">
-        <header class="modal__header">
-          <h3>Withdraw listing?</h3>
-        </header>
-        <div class="modal__body">
-          <p>This loan will be taken off the marketplace. Are you sure you want to proceed?</p>
+    </section>
+  } @else {
+    <section class="borrower-view">
+      <header class="borrower-overview">
+        <h1>Your Loan/Credit Portfolio</h1>
+        <p class="overview-description">
+          Discover offers tailored to your profile and keep track of new opportunities as they land.
+        </p>
+        <div class="overview-stats">
+          @for (card of borrowerSummaryCards(); track card.label) {
+            <article class="overview-card" [class.is-accent]="card.accent">
+              <div class="overview-card__label">{{ card.label }}</div>
+              <div class="overview-card__value">{{ card.value }}</div>
+              @if (card.helper) {
+                <p class="overview-card__helper">{{ card.helper }}</p>
+              }
+            </article>
+          }
         </div>
-        <footer class="modal__footer">
-          <button type="button" class="btn btn--ghost" (click)="closeWithdrawModal()">Cancel</button>
-          <button type="button" class="btn btn--danger" (click)="confirmWithdrawListing()">Confirm withdraw</button>
-        </footer>
-      </div>
-    </div>
-    }
+      </header>
 
-    @if (pendingDeclineRequest()) {
-    <div class="modal is-visible">
-      <div class="modal__backdrop" (click)="closeDeclineModal()"></div>
-      <div class="modal__dialog">
-        <header class="modal__header">
-          <h3>Decline borrower request</h3>
-        </header>
-        <div class="modal__body">
-          <p>Select the reason for declining this request.</p>
-          <label class="modal__label" for="declineReason">Decline reason</label>
-          <select id="declineReason" class="modal__select" [value]="selectedDeclineReason() ?? ''"
-            (change)="selectDeclineReason($any($event.target).value)">
-            <option value="" disabled>Select a reason</option>
-            @for (reason of declineReasons; track reason) {
-            <option [value]="reason">{{ reason }}</option>
-            }
-          </select>
+      @if (isBorrowerLoading()) {
+        <div class="status-banner info">
+          Loading tailored offers…
+          <button type="button" class="btn btn--ghost btn--small" (click)="refreshBorrower()">Refresh</button>
         </div>
-        <footer class="modal__footer">
-          <button type="button" class="btn btn--ghost" (click)="closeDeclineModal()">Cancel</button>
-          <button type="button" class="btn btn--danger" [disabled]="!selectedDeclineReason()"
-            (click)="confirmDeclineRequest()">Confirm decline</button>
-        </footer>
+      } @else if (borrowerErrorMessage()) {
+        <div class="status-banner error">
+          {{ borrowerErrorMessage() }}
+          <button type="button" class="btn btn--ghost btn--small" (click)="refreshBorrower()">Try again</button>
+        </div>
+      }
+
+      <div class="dashboard-tabs borrower-tabs">
+        @for (tab of borrowerTabs(); track tab.id) {
+          <button
+            type="button"
+            class="dashboard-tabs__btn"
+            [class.is-active]="activeBorrowerTab() === tab.id"
+            (click)="setBorrowerTab(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        }
       </div>
-    </div>
-    }
-    }
-  </section>
+
+      <p class="tab-description">{{ currentBorrowerTab().description }}</p>
+
+      @if (!borrowerCurrentLoans().length && !isBorrowerLoading() && !borrowerErrorMessage()) {
+        <div class="empty-state">
+          <h2>{{ currentBorrowerTab().emptyTitle }}</h2>
+          <p>{{ currentBorrowerTab().emptyCopy }}</p>
+        </div>
+      } @else {
+        <div class="borrower-loans">
+          @for (loan of borrowerCurrentLoans(); track loan.id) {
+            <article class="borrower-loan-card">
+              <header class="borrower-loan-card__header">
+                <div>
+                  <h3>{{ loan.name }}</h3>
+                  @if (loan.lender) {
+                    <p>{{ loan.lender }}</p>
+                  }
+                </div>
+                @if (loan.amountBadge) {
+                  <div class="borrower-loan-card__amount">{{ loan.amountBadge }}</div>
+                }
+              </header>
+              <div class="borrower-loan-card__meta">
+                @for (meta of loan.meta; track meta.label) {
+                  <div>
+                    <span class="label">{{ meta.label }}</span>
+                    <strong>{{ meta.value }}</strong>
+                  </div>
+                }
+              </div>
+              <footer class="borrower-loan-card__footer">
+                <div class="borrower-loan-card__footer-main">
+                  @if (loan.status) {
+                    <span class="status-pill" [attr.data-tone]="loan.tone ?? 'info'">{{ loan.status }}</span>
+                  }
+                  @if (loan.note) {
+                    <p class="loan-note">{{ loan.note }}</p>
+                  }
+                </div>
+              </footer>
+            </article>
+          }
+        </div>
+      }
+    </section>
   }
 </div>

@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../shared/services/auth.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -16,12 +16,23 @@ export class Auth {
   private isSignInSig = signal(true);
   isSignIn = () => this.isSignInSig();
 
+  private signInErrorSig = signal<string | null>(null);
+  signInError = () => this.signInErrorSig();
+
+  private signUpErrorSig = signal<string | null>(null);
+  signUpError = () => this.signUpErrorSig();
+
   signInForm!: FormGroup;
   signUpForm!: FormGroup;
 
-  constructor(private fb: FormBuilder, private router: Router, private auth: AuthService) {
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private route: ActivatedRoute,
+    private auth: AuthService
+  ) {
     this.signInForm = this.fb.group({
-      username: ['', Validators.required],
+      email: ['', Validators.required],
       password: ['', Validators.required],
     });
 
@@ -32,41 +43,62 @@ export class Auth {
     });
 
     this.signInForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
-      if (this.signInForm.hasError('invalid')) this.signInForm.setErrors(null);
+      if (this.signInErrorSig()) this.signInErrorSig.set(null);
     });
 
     const usernameCtrl = this.signUpForm.get('username');
     if (usernameCtrl) {
       usernameCtrl.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
-        const errors = usernameCtrl.errors;
-        if (errors?.['taken']) {
-          const { taken, ...rest } = errors;
-          usernameCtrl.setErrors(Object.keys(rest).length ? rest : null);
+        if (usernameCtrl.hasError('taken')) {
+          usernameCtrl.setErrors(null);
+          usernameCtrl.updateValueAndValidity({ emitEvent: false });
         }
       });
     }
+
+    this.signUpForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      if (this.signUpErrorSig()) this.signUpErrorSig.set(null);
+    });
+
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const mode = (params.get('mode') ?? '').toLowerCase();
+      const toSignIn = mode !== 'signup';
+      this.isSignInSig.set(toSignIn);
+      this.signInErrorSig.set(null);
+      this.signUpErrorSig.set(null);
+    });
   }
 
   swap(toSignIn: boolean) {
     this.isSignInSig.set(toSignIn);
+    this.signInErrorSig.set(null);
+    this.signUpErrorSig.set(null);
+    const queryParams = toSignIn ? { mode: null } : { mode: 'signup' };
+    this.router.navigate([], {
+      queryParams,
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
-  submitSignIn() {
+  async submitSignIn() {
     if (this.signInForm.invalid) {
       this.signInForm.markAllAsTouched();
       return;
     }
-    const success = this.auth.signIn(this.signInForm.value);
-    if (!success) {
-      this.signInForm.setErrors({ invalid: true });
+    const result = await this.auth.signIn(this.signInForm.value);
+    if (!result.ok) {
+      this.signInErrorSig.set(result.message ?? 'Incorrect username or password');
+      this.signInForm.markAllAsTouched();
       return;
     }
+    this.signInErrorSig.set(null);
     this.signInForm.reset();
     const target = this.auth.isApproved() ? '/dashboard' : '/onboarding/personal';
     this.router.navigateByUrl(target);
   }
 
-  submitSignUp() {
+  async submitSignUp() {
     const { username, password, confirm } = this.signUpForm.value;
     if (this.signUpForm.invalid || password !== confirm) {
       if (password !== confirm) this.signUpForm.get('confirm')?.setErrors({ mismatch: true });
@@ -74,16 +106,20 @@ export class Auth {
       return;
     }
 
-    const success = this.auth.signUp({ username, password });
-    if (!success) {
+    const result = await this.auth.signUp({ username, password });
+    if (!result.ok) {
+      this.signUpErrorSig.set(result.message ?? 'Unable to create account');
       const usernameCtrl = this.signUpForm.get('username');
-      if (usernameCtrl) {
+      const loweredMessage = (result.message ?? '').toLowerCase();
+      if (usernameCtrl && (loweredMessage.includes('exist') || loweredMessage.includes('taken'))) {
         const existing = usernameCtrl.errors ?? {};
         usernameCtrl.setErrors({ ...existing, taken: true });
+        usernameCtrl.markAsTouched();
       }
       this.signUpForm.markAllAsTouched();
       return;
     }
+    this.signUpErrorSig.set(null);
     this.signUpForm.reset();
     this.isSignInSig.set(true);
     this.router.navigateByUrl('/onboarding/personal');

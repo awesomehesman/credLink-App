@@ -10,8 +10,8 @@ import { OnboardingSteps } from '../../shared/components/stepper/stepper';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDatepickerToggle } from '@angular/material/datepicker';
 import { MatSelectModule } from '@angular/material/select';
+import { ProfileService } from '../../shared/services/profile.service';
 
 @Component({
   standalone: true,
@@ -21,8 +21,15 @@ import { MatSelectModule } from '@angular/material/select';
   styleUrls: ['./onboarding-personal.scss']
 })
 export class OnboardingPersonal implements OnInit {
-  constructor(private fb: FormBuilder, private router: Router){}
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private profile: ProfileService
+  ){}
   form!: FormGroup;
+  saving = false;
+  loadError: string | null = null;
+  submitError: string | null = null;
 
   // provinces for South Africa
   provinces = [
@@ -45,14 +52,149 @@ export class OnboardingPersonal implements OnInit {
       email: ['', [Validators.required, Validators.email]],
       phone: ['', [Validators.required]],
       dateOfBirth: [null, [Validators.required]],
-      nationalIdOrPassport: ['', [Validators.required, Validators.minLength(6)]],
+      identificationType: ['sa-id', [Validators.required]],
+      nationalIdOrPassport: ['', [Validators.required]],
       idExpiry: [null, []],
+      companyName: ['', []],
+      employmentStatus: ['Full-time', [Validators.required]],
+      employmentStatusOther: ['Other'],
+      monthlyIncome: [null, [Validators.required, Validators.min(0)]],
       street: ['', [Validators.required]],
       city: ['', [Validators.required]],
       province: ['', [Validators.required]],
       postalCode: ['', [Validators.required]],
       country: ['South Africa', [Validators.required]]
     });
+    this.setupIdentificationValidation();
+    this.setupEmploymentValidation();
+    void this.prefill();
   }
-  submit(){ if (this.form.invalid) { this.form.markAllAsTouched(); return; } localStorage.setItem('credlink-profile', JSON.stringify(this.form.value)); this.router.navigateByUrl('/onboarding/kyc'); }
+
+  async submit(){
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.saving = true;
+    this.submitError = null;
+    try {
+      const rawIncome = this.form.value.monthlyIncome;
+      const parsedIncome =
+        rawIncome !== null && rawIncome !== '' ? Number(rawIncome) : null;
+      const payload = {
+        ...this.form.value,
+        monthlyIncome:
+          parsedIncome !== null && Number.isFinite(parsedIncome) ? parsedIncome : null,
+      };
+      await this.profile.savePersonalInfo(payload);
+      this.router.navigateByUrl('/onboarding/kyc');
+    } catch {
+      this.submitError = 'Unable to save your details. Please try again.';
+    } finally {
+      this.saving = false;
+    }
+  }
+
+  private async prefill() {
+    this.loadError = null;
+    try {
+      const profile = await this.profile.fetchPersonalInfo();
+      if (!profile) return;
+      const identificationControlValue =
+        this.mapIdentificationTypeForControl(profile.identificationType) ??
+        this.mapIdentificationTypeForControl(profile.idKind) ??
+        'sa-id';
+      this.form.patchValue({
+        firstName: profile.firstName ?? '',
+        middleName: profile.middleName ?? '',
+        lastName: profile.lastName ?? '',
+        email: profile.email ?? '',
+        phone: profile.phoneNumber ?? '',
+        dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth) : null,
+        identificationType: identificationControlValue,
+        nationalIdOrPassport: profile.governmentId ?? '',
+        idExpiry: profile.idExpiry ? new Date(profile.idExpiry) : null,
+        companyName: profile.businessName ?? '',
+        employmentStatus: profile.employmentStatus ?? this.form.get('employmentStatus')?.value ?? 'Full-time',
+        employmentStatusOther: profile.employmentStatusOther ?? '',
+        monthlyIncome:
+          profile.monthlyIncome !== undefined && profile.monthlyIncome !== null
+            ? Number(profile.monthlyIncome)
+            : null,
+        street: profile.address?.street ?? '',
+        city: profile.address?.city ?? '',
+        province: profile.address?.province ?? '',
+        postalCode: profile.address?.postalCode ?? '',
+        country: profile.address?.country ?? this.form.get('country')?.value ?? 'South Africa'
+      });
+    } catch {
+      this.loadError = 'We could not load your existing profile. You can still continue.';
+    }
+  }
+
+  isSouthAfricanId() {
+    return this.form?.get('identificationType')?.value === 'sa-id';
+  }
+
+  showOtherEmployment() {
+    return this.form?.get('employmentStatus')?.value === 'Other';
+  }
+
+  onEmploymentChange(value: string) {
+    const otherControl = this.form.get('employmentStatusOther');
+    if (!otherControl) return;
+    if (value === 'Other') {
+      otherControl.setValidators([Validators.required, Validators.minLength(3)]);
+    } else {
+      otherControl.clearValidators();
+      otherControl.setValue('', { emitEvent: false });
+    }
+    otherControl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private setupIdentificationValidation() {
+    const idTypeControl = this.form.get('identificationType');
+    const docControl = this.form.get('nationalIdOrPassport');
+    if (!idTypeControl || !docControl) return;
+
+    idTypeControl.valueChanges.subscribe(type => {
+      this.applyIdentificationValidators(type);
+    });
+    this.applyIdentificationValidators(idTypeControl.value);
+  }
+
+  private setupEmploymentValidation() {
+    const employmentControl = this.form.get('employmentStatus');
+    if (!employmentControl) return;
+    employmentControl.valueChanges.subscribe(value => this.onEmploymentChange(value));
+    this.onEmploymentChange(employmentControl.value);
+  }
+
+  private applyIdentificationValidators(type: string) {
+    const docControl = this.form.get('nationalIdOrPassport');
+    if (!docControl) return;
+    if (type === 'sa-id') {
+      docControl.setValidators([
+        Validators.required,
+        Validators.pattern(/^\d{13}$/),
+      ]);
+    } else {
+      docControl.setValidators([
+        Validators.required,
+        Validators.pattern(/^[A-Za-z0-9]{6,30}$/),
+      ]);
+    }
+    docControl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private mapIdentificationTypeForControl(value: string | undefined | null): 'sa-id' | 'passport' | null {
+    if (!value) return null;
+    const normalized = value.toString().trim().toLowerCase();
+    if (!normalized) return null;
+    if (normalized.includes('passport')) return 'passport';
+    if (normalized === 'sa-id' || normalized.includes('south african') || normalized.includes('national')) {
+      return 'sa-id';
+    }
+    return null;
+  }
 }

@@ -1,0 +1,99 @@
+<div class="landing">
+  <header class="landing__header">
+    <div class="landing__header-spacer"></div>
+    <div class="landing__brand">
+      <img src="assets/images/app-logo-2.png" alt="CredLink" />
+    </div>
+    <div class="landing__actions">
+      <button type="button" class="btn btn--ghost" (click)="openAuth('signin')">Sign In</button>
+      <button type="button" class="btn btn--primary" (click)="openAuth('signup')">Sign Up</button>
+    </div>
+  </header>
+
+  <main class="landing__main">
+    <section class="hero">
+      <div class="hero__content">
+        <h1>The peer-to-peer bridge for fair credit</h1>
+        <p>
+          CredLink is a peer-to-peer marketplace opening investment opportunities to everyday
+          lenders while extending credit access to entrepreneurs often overlooked by traditional
+          banks. We connect people to people through transparent data and responsible automation.
+        </p>
+        <div class="hero__cta">
+          <button type="button" class="btn btn--primary" (click)="openAuth('signup')">Get Started</button>
+          <button type="button" class="btn btn--outline" (click)="openAuth('signin')">Explore Dashboard</button>
+        </div>
+        <dl class="hero__stats">
+          <div>
+            <dt>Instant onboarding</dt>
+            <dd>Digital KYC and shared trust signals across the network.</dd>
+          </div>
+          <div>
+            <dt>Inclusive growth</dt>
+            <dd>Match community capital with high-potential borrowers.</dd>
+          </div>
+        </dl>
+      </div>
+      <div class="hero__visual">
+        <div class="hero-card hero-card--primary">
+          <h2>Borrowers</h2>
+          <ul>
+            <li>Upload documents securely</li>
+            <li>Tell your story to real people, not rigid scorecards</li>
+            <li>Unlock flexible repayment plans that fit your hustle</li>
+          </ul>
+        </div>
+        <div class="hero-card hero-card--secondary">
+          <h2>Lenders</h2>
+          <ul>
+            <li>Invest alongside credible data, starting with small tickets</li>
+            <li>Review community impact and repayment insights instantly</li>
+            <li>Diversify your portfolio while supporting real businesses</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="features">
+      <article class="feature">
+        <h3>Peer-powered journey</h3>
+        <p>
+          From onboarding to disbursement, we keep lenders and borrowers in sync with shared
+          transparency and smart nudges.
+        </p>
+      </article>
+      <article class="feature">
+        <h3>Actionable community analytics</h3>
+        <p>
+          Track repayment behaviour, social proof, and impact metrics to inform people-first
+          decisions.
+        </p>
+      </article>
+      <article class="feature">
+        <h3>Secure ecosystem</h3>
+        <p>
+          Enterprise-grade security protects identities while enabling a trusted peer network to
+          collaborate confidently.
+        </p>
+      </article>
+    </section>
+
+    <section class="callout">
+      <div class="callout__content">
+        <h2>Ready to link everyday capital to overlooked potential?</h2>
+        <p>
+          Join CredLink to unlock peer-to-peer lending that empowers individuals to invest and
+          communities to thrive.
+        </p>
+      </div>
+      <div class="callout__actions">
+        <button type="button" class="btn btn--primary" (click)="openAuth('signup')">Create account</button>
+        <button type="button" class="btn btn--ghost" (click)="openAuth('signin')">Sign in</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="landing__footer">
+    <small>© {{ currentYear }} CredLink. Connecting opportunity with responsible finance.</small>
+  </footer>
+</div>

@@ -9,6 +9,7 @@
     </div>
   </section>
 
+  @if (hasAvailableFunds() || editingOffer()) {
   <mat-card class="create-card">
     <div class="create-card__header">
       <div>
@@ -98,6 +99,17 @@
       <div class="alert">{{ submitError() }}</div>
     }
   </mat-card>
+  } @else {
+    <mat-card class="no-funds-card">
+      <div>
+        <h2>Add funds to publish offers</h2>
+        <p>Your wallet balance is R0.00. Deposit funds before creating new loan offers.</p>
+      </div>
+      <div class="actions">
+        <button mat-flat-button color="primary" type="button" (click)="openAddFunds()">Add funds</button>
+      </div>
+    </mat-card>
+  }
 
   <mat-card class="offers-card">
     <div class="offers-card__header">
@@ -154,40 +166,75 @@
               </div>
             </div>
 
-            <footer class="loan-card__footer">
-              <div class="chip-bar">
-                <span class="chip chip--status">{{ offer.status === 'Open' ? 'New listing' : offer.status }}</span>
-                <div class="chip-bar__actions">
-                  <button type="button" class="chip chip--action" (click)="editOffer(offer)" [disabled]="!canModify(offer.id)">
-                    Update loan
-                  </button>
-                  <button type="button" class="chip chip--danger" (click)="withdraw(offer.id)" [disabled]="!canModify(offer.id)">
-                    Withdraw listing
-                  </button>
-                </div>
+            <footer class="lender-loan-card__footer">
+              <div class="lender-loan-card__footer-meta">
+                <span class="section-subtitle">
+                  Pending: {{ pendingCount(offer.id) }} • Total requests: {{ requestsFor(offer.id).length }}
+                </span>
+              </div>
+
+              <div class="lender-loan-card__actions">
+                @if (canWithdraw(offer.id)) {
+                <button type="button" class="btn btn--primary" (click)="editOffer(offer)">
+                  Update loan
+                </button>
+                <button type="button" class="btn btn--danger" (click)="withdraw(offer.id)">
+                  Withdraw listing
+                </button>
+                } @else {
+                <span class="section-subtitle">Actions locked: pending requests present</span>
+                }
               </div>
             </footer>
 
-            <section class="loan-card__requests">
-              <h4>Borrower requests</h4>
+            <section class="loan-card__requests marketplace-requests">
+              <header class="marketplace-requests__header">
+                <h4>Borrower requests</h4>
+                <span class="marketplace-requests__count">
+                  {{ requestsFor(offer.id).length ? (requestsFor(offer.id).length + ' request(s)') : 'None yet' }}
+                </span>
+              </header>
+
               @if (!requestsFor(offer.id).length) {
-                <p class="muted">No borrower requests yet.</p>
+              <div class="marketplace-requests__empty">No borrower requests yet.</div>
               } @else {
-                @for (req of requestsFor(offer.id); track req.id) {
-                  <div class="request">
-                    <div>
-                      <strong>{{ req.borrowerId.slice(0, 8) }}…</strong>
-                      <span>Status: {{ req.status }}</span>
-                      <span>Requested rate: {{ req.requestedRate || offer.rate }}%</span>
-                    </div>
-                    @if (req.status === 'Pending') {
-                      <div class="request__actions">
-                        <button mat-button color="primary" (click)="decide(offer.id, req.id, true)">Approve</button>
-                        <button mat-button color="warn" (click)="decide(offer.id, req.id, false)">Decline</button>
-                      </div>
-                    }
+              @for (req of requestsFor(offer.id); track req.id) {
+              <article class="borrower-request">
+                <div class="borrower-request__identity">
+                  <div class="borrower-request__avatar">
+                    {{ (req.borrowerId || 'B').slice(0,1) }}
                   </div>
+                  <div>
+                    <strong>{{ req.borrowerId }}</strong>
+                  </div>
+                </div>
+
+                <div class="borrower-request__details">
+                  <div>
+                    <span class="label">Requested rate</span>
+                    <strong>{{ (req.requestedRate ?? offer.rate) }}%</strong>
+                  </div>
+                  <div>
+                    <span class="label">Status</span>
+                    <strong>{{ req.status }}</strong>
+                  </div>
+                </div>
+
+                <div class="borrower-request__status">
+                  <span class="status-pill"
+                    [attr.data-tone]="req.status === 'Approved' ? 'approved' : req.status === 'Declined' ? 'rejected' : 'pending'">
+                    {{ req.status }}
+                  </span>
+                </div>
+
+                @if (req.status === 'Pending') {
+                <div class="borrower-request__actions">
+                  <button class="btn btn--positive btn--small" (click)="decide(offer.id, req.id, true)">Approve</button>
+                  <button class="btn btn--danger btn--small" (click)="decide(offer.id, req.id, false)">Decline</button>
+                </div>
                 }
+              </article>
+              }
               }
             </section>
           </article>

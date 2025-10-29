@@ -1,0 +1,192 @@
+/* ---------- Tokens ---------- */
+$green-600: #1c7c63;
+$green-700: #145845;
+$green-50: rgba(28, 124, 99, 0.06);
+$ink: #123126;
+
+$muted-60: rgba(18, 49, 38, 0.6);
+$muted-65: rgba(18, 49, 38, 0.65);
+$muted-70: rgba(18, 49, 38, 0.7);
+
+$warn-bg: rgba(255, 193, 58, 0.18);
+$warn-fg: #a36300;
+
+$ok-bg: rgba(28, 124, 99, 0.14);
+$ok-fg: #1c7c63;
+
+$err-bg: rgba(231, 76, 60, 0.16);
+$err-fg: #a0311f;
+
+$info-bg: rgba(33, 97, 140, 0.14);
+$info-fg: #21618c;
+
+/* ---------- Mixins & placeholders ---------- */
+@mixin pill($bg, $fg) {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: $bg;
+  color: $fg;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+%card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(22, 60, 48, 0.06);
+  box-shadow: 0 12px 24px rgba(22, 60, 48, 0.06);
+}
+
+/* ---------- Utilities ---------- */
+.section-subtitle {
+  font-size: 14px;
+  color: rgba(16, 42, 35, 0.55);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  border: none;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+
+  &--primary {
+    background: $green-600;
+    color: #fff;
+    &:hover { background: $green-700; }
+  }
+
+  &--ghost {
+    background: rgba(28, 124, 99, 0.08);
+    color: $green-600;
+    &:hover { background: rgba(28, 124, 99, 0.16); }
+  }
+
+  &--danger {
+    background: rgba(231, 76, 60, 0.12);
+    color: #b03a2e;
+    &:hover { background: rgba(231, 76, 60, 0.2); }
+  }
+
+  &--positive {
+    background: rgba(39, 174, 96, 0.14);
+    color: $green-600;
+    &:hover { background: rgba(39, 174, 96, 0.22); }
+  }
+
+  &--small {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 999px;
+  }
+}
+
+/* ---------- Status pill ---------- */
+.status-pill {
+  @include pill(rgba(28, 124, 99, 0.12), $green-600);
+
+  &[data-tone='pending'] { @include pill($warn-bg, $warn-fg); }
+  &[data-tone='approved'] { @include pill($ok-bg, $ok-fg); }
+  &[data-tone='rejected'] { @include pill($err-bg, $err-fg); }
+  &[data-tone='info'] { @include pill($info-bg, $info-fg); }
+}
+
+/* ---------- Borrower request card (shared) ---------- */
+.borrower-request {
+  @extend %card;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  &__identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    strong {
+      font-size: 15px;
+      color: $ink;
+    }
+    p {
+      margin: 4px 0 0;
+      color: $muted-60;
+      font-size: 13px;
+    }
+  }
+
+  &__avatar {
+    width: 40px; height: 40px; border-radius: 999px;
+    background: #e5f2ee; color: $green-600;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px;
+  }
+
+  &__details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px 18px;
+
+    .label {
+      color: rgba(18, 49, 38, 0.5);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    strong {
+      display: block;
+      margin-top: 4px;
+      color: $ink;
+      font-size: 14px;
+    }
+  }
+
+  &__status { display: flex; }
+  &__note { margin: 0; font-size: 13px; color: $muted-70; }
+  &__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+}
+
+/* ---------- Marketplace request wrap ---------- */
+.marketplace-requests {
+  background: $green-50;
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 16px;
+
+  &__header {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    h4 { margin: 0; font-size: 16px; font-weight: 700; color: $ink; }
+  }
+  &__count { font-size: 13px; font-weight: 600; color: $green-600; }
+  &__empty { font-size: 14px; color: $muted-60; }
+}
+
+/* ---------- Generic card spacing helpers ---------- */
+.card-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px 18px;
+
+  .label {
+    color: rgba(18, 49, 38, 0.5);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  strong {
+    display: block;
+    margin-top: 4px;
+    color: $ink;
+    font-size: 15px;
+  }
+}
+
+/* ---------- Small responsive tweak shared ---------- */
+@media (max-width: 720px) {
+  .borrower-request__details {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}

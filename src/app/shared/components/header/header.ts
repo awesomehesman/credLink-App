@@ -6,59 +6,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { WalletAddFundsDialog } from './wallet-add-dialog';
 import { WalletWithdrawDialog } from './wallet-withdraw-dialog';
-import { WalletService } from '../../services/wallet.service';
+import { WalletService, WALLET_BANKS } from '../../services/wallet.service';
+import { AuthService } from '../../services/auth.service';
 
-interface WalletBank {
-  id: string;
-  name: string;
-  accountName: string;
-  branchCode: string;
-  branchName: string;
-  accountNumber: string;
-  reference: string;
-}
-
-const WALLET_BANKS: WalletBank[] = [
-  {
-    id: 'absa',
-    name: 'ABSA',
-    accountName: 'CredLink Nominees (RF) (PTY) LTD',
-    branchCode: '632005',
-    branchName: 'Melrose Arch',
-    accountNumber: '4096150463',
-    reference: 'CL-ABSA-784563'
-  },
-  {
-    id: 'fnb',
-    name: 'FNB',
-    accountName: 'CredLink Nominees (RF) (PTY) LTD',
-    branchCode: '255005',
-    branchName: 'Sandton City',
-    accountNumber: '62145698712',
-    reference: 'CL-FNB-784563'
-  },
-  {
-    id: 'standard',
-    name: 'Standard Bank',
-    accountName: 'CredLink Nominees (RF) (PTY) LTD',
-    branchCode: '051001',
-    branchName: 'Rosebank',
-    accountNumber: '000245879',
-    reference: 'CL-SB-784563'
-  }
-];
-
-const WITHDRAW_DETAILS = {
-  accountName: 'K Hesman',
-  bank: 'Capitec',
-  branchCode: '470010',
-  branchName: '470010',
-  accountNumber: '154899XXXX',
-  ficaVerified: true
-};
 
 @Component({
   selector: 'app-header',
@@ -79,6 +32,8 @@ const WITHDRAW_DETAILS = {
 export class Header {
   private readonly dialog = inject(MatDialog);
   private readonly wallet = inject(WalletService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   @Output() menuToggle = new EventEmitter<void>();
 
   readonly walletBalance = computed(() => this.wallet.available());
@@ -109,12 +64,23 @@ export class Header {
       disableClose: true,
       data: {
         balance: this.walletSummary(),
-        profile: WITHDRAW_DETAILS
+        profile: this.wallet.withdrawProfile()
       }
     }).afterClosed().subscribe(result => {
       if (!result || typeof result.amount !== 'number') return;
-      const ok = this.wallet.withdraw(result.amount);
-      if (!ok) console.warn('Unable to withdraw funds: insufficient available balance.');
+      this.wallet.withdraw(result.amount, result.reference).then((ok) => {
+        if (!ok) {
+          console.warn('Unable to withdraw funds: insufficient available balance.');
+        }
+      });
     });
+  }
+
+  async signOut() {
+    const ok = await this.auth.logout();
+    if (!ok) {
+      console.warn('Signed out locally after API logout failed.');
+    }
+    this.router.navigateByUrl('/');
   }
 }

@@ -1,41 +1,66 @@
 <div class="borrow-page">
   <section class="borrower-view">
-    @if (!hasLoans()) {
+    @if (loading()) {
+      <div class="status-banner info">
+        Loading tailored offers…
+        <button type="button" class="btn btn--ghost btn--small" (click)="refresh()">Refresh</button>
+      </div>
+    }
+    @if (error()) {
+      <div class="status-banner error">
+        {{ error() }}
+        <button type="button" class="btn btn--ghost btn--small" (click)="refresh()">Try again</button>
+      </div>
+    }
+    @if (!hasLoans() && !loading() && !error()) {
       <div class="empty-state">
         <h2>No loan offers yet</h2>
         <p>We will notify you as soon as new borrowing opportunities become available.</p>
       </div>
     } @else {
-      @for (section of sections(); track section.id) {
-        @if (section.items.length) {
-          <div class="borrower-section">
-            <header class="borrower-section__header">
-              <h2>{{ section.title }}</h2>
-              <p>{{ section.subtitle }}</p>
-            </header>
-            <div class="borrower-section__list" [class.is-grid]="section.id === 'preApproved'">
-              @for (loan of section.items; track loan.amount) {
-                <article class="loan-card">
-                  @if (loan.badge) {
-                    <span class="loan-card__badge">{{ loan.badge }}</span>
-                  }
-                  <div class="loan-card__provider">{{ loan.provider }}</div>
-                  <h3 class="loan-card__title">{{ loan.amount }}</h3>
-                  <p class="loan-card__term">{{ loan.duration }}</p>
-                  <div class="loan-card__chance" [attr.data-level]="loan.approvalChance | lowercase">
-                    Approval chance: {{ loan.approvalChance }}
-                  </div>
-                  <p class="loan-card__description">{{ loan.description }}</p>
-                  <div class="loan-card__actions">
-                    <button type="button" class="btn btn--primary">{{ loan.primaryAction }}</button>
-                    <button type="button" class="btn btn--ghost">{{ loan.secondaryAction }}</button>
-                  </div>
-                </article>
+      <div class="borrower-section">
+        <header class="borrower-section__header">
+          <h2>Your eligible loan offers</h2>
+          <p>Based on your current profile and wallet activity.</p>
+        </header>
+        <div class="borrower-section__list">
+          @for (offer of cards(); track offer.id) {
+            <article class="loan-card">
+              @if (offer.badge) {
+                <span class="loan-card__badge">{{ offer.badge }}</span>
               }
-            </div>
-          </div>
-        }
-      }
+              <div class="loan-card__provider">{{ offer.label }}</div>
+              <h3 class="loan-card__title">{{ offer.amount | currency:'ZAR':'symbol-narrow':'1.0-0' }}</h3>
+              <dl class="loan-card__meta">
+                <div>
+                  <dt>Interest rate</dt>
+                  <dd>{{ offer.rate | number : '1.0-2' }}% APR</dd>
+                </div>
+                <div>
+                  <dt>Term</dt>
+                  <dd>{{ offer.term }}</dd>
+                </div>
+                <div>
+                  <dt>Requirements</dt>
+                  <dd>{{ offer.requirements }}</dd>
+                </div>
+              </dl>
+              <div class="loan-card__footer">
+                <span class="loan-card__timestamp">
+                  Added {{ offer.created | date: 'mediumDate' }}
+                </span>
+                @if (offer.negotiable) {
+                  <span class="loan-card__negotiable">Negotiable terms available</span>
+                }
+              </div>
+              <div class="loan-card__actions">
+                <button type="button" class="btn btn--primary">View details</button>
+                <button type="button" class="btn btn--ghost">Compare</button>
+              </div>
+            </article>
+          }
+        </div>
+      </div>
     }
   </section>
 </div>

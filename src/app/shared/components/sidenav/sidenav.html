@@ -8,8 +8,8 @@
     <mat-icon matListItemIcon>settings</mat-icon>
     <span matListItemTitle>Settings</span>
   </a>
-  <a mat-list-item routerLink="/auth" routerLinkActive="active" (click)="handleNavigate()">
+  <button mat-list-item type="button" (click)="signOut()">
     <mat-icon matListItemIcon>logout</mat-icon>
     <span matListItemTitle>Sign Out</span>
-  </a>
+  </button>
 </mat-nav-list>

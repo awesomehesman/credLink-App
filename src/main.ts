@@ -1,8 +1,10 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app/app.routes';
 import { AppRoot } from './app/app';
+import { authInterceptor } from './app/shared/interceptors/auth.interceptor';
 
 // // 🧹 Clear all local development data (optional, for testing only)
 // if (window.location.hostname === 'localhost') {
@@ -35,5 +37,6 @@ bootstrapApplication(AppRoot, {
   providers: [
     provideRouter(routes, withComponentInputBinding()),
     provideAnimations(), // keep animations enabled
+    provideHttpClient(withInterceptors([authInterceptor])),
   ],
 }).catch(console.error);

@@ -7,10 +7,10 @@
 
         <form [formGroup]="signInForm" (ngSubmit)="submitSignIn()" novalidate>
           <label class="field">
-            <span>Username*</span>
-            <input formControlName="username" type="text" placeholder="Email or username" />
-            @if (signInForm.get('username')?.touched && signInForm.get('username')?.invalid) {
-              <small class="err">Username is required</small>
+            <span>Email or username*</span>
+            <input formControlName="email" type="text" placeholder="Email or username" />
+            @if (signInForm.get('email')?.touched && signInForm.get('email')?.hasError('required')) {
+              <small class="err">This field is required</small>
             }
           </label>
 
@@ -25,8 +25,8 @@
           <div class="actions actions--center">
             <button type="submit" class="btn btn--primary btn--large">Sign In</button>
           </div>
-          @if (signInForm.hasError('invalid')) {
-            <div class="err">Incorrect username or password</div>
+          @if (signInError()) {
+            <div class="form-error">{{ signInError() }}</div>
           }
         </form>
       </div>
@@ -67,6 +67,9 @@
           <div class="actions actions--center">
             <button type="submit" class="btn btn--primary btn--large">Sign Up</button>
           </div>
+          @if (signUpError()) {
+            <div class="form-error">{{ signUpError() }}</div>
+          }
         </form>
       </div>
     </section>

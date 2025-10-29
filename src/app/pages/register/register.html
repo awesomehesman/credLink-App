@@ -93,5 +93,8 @@
     <div class="actions full">
       <button mat-raised-button color="primary" type="submit">Create account</button>
     </div>
+    @if (submitError) {
+      <div class="form-error full">{{ submitError }}</div>
+    }
   </form>
 </mat-card>
