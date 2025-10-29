@@ -27,8 +27,10 @@ interface ApiUser {
   id: string;
   email: string;
   name?: string;
+  /** KYC/approval status as string ("APPROVED", "PENDING_REVIEW", etc.) or numeric code ("2") */
   status?: string;
   created?: string;
+  /** Explicit approved flag if the backend provides it */
   approved?: boolean;
 }
 
@@ -83,9 +85,12 @@ export class AuthService {
     this._profile.set(user ?? null);
     this._token.set(normalized.token);
     this._expires.set(normalized.expires ?? null);
+
+    // Derive "approved" in a way that supports BOTH string and numeric KYC statuses.
     this._approved.set(
       this.resolveApproval(user?.status, user?.approved ?? (session as any)?.approved)
     );
+
     this.persistSession();
   }
 
@@ -104,14 +109,46 @@ export class AuthService {
     localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
   }
 
-  private resolveApproval(status?: string | null, approvedFlag?: boolean | null) {
+  /**
+   * Interpret approval from various backend shapes:
+   * - approvedFlag: boolean (authoritative if provided)
+   * - status: may be string ("APPROVED", "PENDING_REVIEW", etc.), numeric (2), or numeric-string ("2")
+   *
+   * Numeric mapping (from backend enum):
+   *  0=DRAFT, 1=PENDING_REVIEW, 2=APPROVED, 3=REJECTED, 4=RESUBMISSION_REQUIRED
+   */
+  private resolveApproval(
+    status?: string | number | null,
+    approvedFlag?: boolean | null
+  ): boolean {
     if (typeof approvedFlag === 'boolean') return approvedFlag;
-    if (!status) return true;
-    const normalized = status.toLowerCase();
+
+    // No status provided — default to true to avoid blocking happy path
+    if (status === undefined || status === null) return true;
+
+    // Try numeric path first (covers number and numeric strings)
+    const asNumber = typeof status === 'number' ? status : Number(String(status).trim());
+    if (!Number.isNaN(asNumber)) {
+      if (asNumber === 2) return true; // APPROVED
+      // All other codes are considered NOT approved
+      if ([0, 1, 3, 4].includes(asNumber)) return false;
+    }
+
+    // Fallback to string semantics
+    const normalized = String(status).toLowerCase();
     if (['approved', 'verified', 'active', 'completed', 'enabled'].includes(normalized)) {
       return true;
     }
-    if (normalized.includes('pending') || normalized.includes('review')) return false;
+    if (
+      normalized.includes('pending') ||
+      normalized.includes('review') ||
+      normalized.includes('reject') ||
+      normalized.includes('resubmission')
+    ) {
+      return false;
+    }
+
+    // Conservative default: allow if unknown but not obviously pending/reviewing/rejected
     return true;
   }
 
@@ -145,25 +182,11 @@ export class AuthService {
     return fallback;
   }
 
-  token() {
-    return this._token();
-  }
-
-  isAuthenticated() {
-    return this._authed();
-  }
-
-  isApproved() {
-    return this._approved();
-  }
-
-  username() {
-    return this._username();
-  }
-
-  userId() {
-    return this._userId();
-  }
+  token() { return this._token(); }
+  isAuthenticated() { return this._authed(); }
+  isApproved() { return this._approved(); }
+  username() { return this._username(); }
+  userId() { return this._userId(); }
 
   async logout(): Promise<boolean> {
     let ok = true;
@@ -252,9 +275,7 @@ export class AuthService {
     }
   }
 
-  signOut() {
-    this.clearSession();
-  }
+  signOut() { this.clearSession(); }
 
   private clearSession() {
     this._authed.set(false);
@@ -295,21 +316,14 @@ export class AuthService {
         'lenderId',
         'borrowerId',
       ]);
-
-      if (fallbackId) {
-        user.id = fallbackId;
-      }
+      if (fallbackId) user.id = fallbackId;
     }
 
     if (!user?.id) {
       console.warn('Auth session missing user id', session);
     }
 
-    return {
-      token,
-      expires,
-      user: user ?? { id: '', email: '' },
-    };
+    return { token, expires, user: user ?? { id: '', email: '' } };
   }
 
   private normalizeUser(raw: any, fallback?: any): ApiUser | null {
@@ -317,12 +331,16 @@ export class AuthService {
       if (!fallback || typeof fallback !== 'object') return null;
       raw = fallback;
     }
+
     const firstName = this.pickString(raw, ['firstName', 'firstname', 'givenName']);
     const lastName = this.pickString(raw, ['lastName', 'lastname', 'surname']);
-    const name = this.pickString(raw, ['name', 'fullName', 'displayName']) ??
+    const name =
+      this.pickString(raw, ['name', 'fullName', 'displayName']) ??
       ([firstName, lastName].filter(Boolean).join(' ') || undefined);
+
     const email =
       this.pickString(raw, ['email', 'userEmail', 'username', 'mail'])?.toLowerCase() ?? '';
+
     const id =
       this.pickString(raw, [
         'id',
@@ -337,6 +355,8 @@ export class AuthService {
         'lender_id',
         'borrower_id',
       ]) ?? '';
+
+    // Accept status from multiple keys; may be string or number (we convert numbers to string)
     const status =
       this.pickString(raw, [
         'status',
@@ -346,19 +366,33 @@ export class AuthService {
         'state',
         'profileStatus',
       ]) ?? undefined;
+
     const created =
       this.pickString(raw, ['created', 'createdAt', 'created_at', 'registeredAt']) ?? undefined;
-    const approved =
-      this.pickBoolean(raw, ['approved', 'isApproved', 'active', 'enabled', 'verified']) ?? false;
 
-    return {
-      id,
-      email,
-      name,
-      status,
-      created,
-      approved,
-    };
+    // If backend gives explicit boolean, keep it.
+    let approved =
+      this.pickBoolean(raw, ['approved', 'isApproved', 'active', 'enabled', 'verified']);
+
+    // Derive from KYC numeric/string if explicit boolean not present.
+    if (approved === undefined) {
+      // Look specifically at raw.kycStatus if available; could be number or string.
+      const kycRaw = (raw as any)?.kycStatus;
+      const kycNumber =
+        typeof kycRaw === 'number'
+          ? kycRaw
+          : Number.isFinite(Number(kycRaw))
+          ? Number(kycRaw)
+          : undefined;
+
+      if (kycNumber !== undefined) {
+        approved = kycNumber === 2; // APPROVED
+      } else if (typeof kycRaw === 'string') {
+        approved = kycRaw.toLowerCase() === 'approved';
+      }
+    }
+
+    return { id, email, name, status, created, approved };
   }
 
   private pickString(source: any, keys: string[]): string | undefined {
@@ -369,6 +403,7 @@ export class AuthService {
         return value.trim();
       }
       if (typeof value === 'number' && Number.isFinite(value)) {
+        // Convert numeric to string, e.g. kycStatus=2 -> "2"
         return String(value);
       }
     }
