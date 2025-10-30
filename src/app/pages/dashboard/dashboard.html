@@ -79,7 +79,7 @@
 
       <p class="tab-description">{{ currentLenderTab().description }}</p>
 
-      @if (!lenderCurrentCards().length && !isLenderLoading() && !lenderErrorMessage()) {
+      @if (!lenderCurrentCards().length && !isLenderLoading() && !lenderErrorMessage() && activeLenderTab() !== "history") {
         <div class="empty-state">
           <h2>No data yet</h2>
           <p>
