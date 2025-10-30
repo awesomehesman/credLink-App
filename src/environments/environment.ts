@@ -12,7 +12,8 @@ const inferredBaseUrl =
         return '';
       }
     }
-    return 'https://credlink-api-centralus-aa.azurewebsites.net';
+    // return 'https://credlink-api-centralus-aa.azurewebsites.net';
+    return 'http://localhost:8085';
   })();
 
 export const environment = {

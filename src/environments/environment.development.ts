@@ -5,6 +5,6 @@ export const environment = {
    * Default keeps the API relative so the Angular dev-server proxy can handle CORS.
    */
   apiBaseUrl:
-    (globalThis as any).NG_APP_API_BASE_URL ??
-    'https://credlink-api-centralus-aa.azurewebsites.net',
+    (globalThis as any).NG_APP_API_BASE_URL ?? 'http://localhost:8085',
+    // 'https://credlink-api-centralus-aa.azurewebsites.net',
 };
